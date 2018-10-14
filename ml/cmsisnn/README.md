@@ -161,9 +161,46 @@ Now let's train some more useful networks.
 2. Great! Now let's test and then convert the network.
     1. `./models/cnrparkext/test.sh` - You should get an accuracy of 96%.
         * This network is robust to a lot more conditions than cnrpark while being the same model size - Awesome!
-    2. `python2 nn_quantizer.py --gpu --model models/cnrpark/cnrpark_train_test.prototxt --weights models/cnrpark/cnrpark_iter_10000.caffemodel --save models/cnrpark/cnrpark.pkl` - Note how the accuracy stays at 100%.
-    3. `python2 nn_convert.py --model models/cnrpark/cnrpark.pkl --mean caffe/examples/cnrpark/mean.binaryproto --output models/cnrpark/cnrpark.network`.
+    2. `python2 nn_quantizer.py --gpu --model models/cnrparkext/cnrparkext_train_test.prototxt --weights models/cnrparkext/cnrparkext_iter_10000.caffemodel --save models/cnrparkext/cnrparkext.pkl` - Note how the accuracy stays at 96%.
+    3. `python2 nn_convert.py --model models/cnrparkext/cnrparkext.pkl --mean caffe/examples/cnrparkext/mean.binaryproto --output models/cnrparkext/cnrparkext.network`.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
+
+### Chars74K (Character Recognition)
+1. Now we're going to train a character recognition model for detecting (0-9, A-Z, a-z).
+    1. Open a terminal in this folder.
+    2. First we need to get the data and create an lmdb.
+        1. `cd caffe/examples`
+        2. `mkdir chars74k`
+        3. `cd chars74k`
+        4. `wget http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/EnglishImg.tgz`
+        5. `wget http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/EnglishHnd.tgz`
+        6. `wget http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/EnglishFnt.tgz`
+        7. `wget http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/Lists.tgz`
+        8. `tar -xvf EnglishImg.tgz`
+        9. `tar -xvf EnglishHnd.tgz`
+        10. `tar -xvf EnglishFnt.tgz`
+        11. `tar -xvf Lists.tgz`
+        12. Now to build the label file...
+            1. `cat Lists/English/Fnt/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Fnt\/\0.png \1/' > English/labels.txt`
+            2. `cat Lists/English/Hnd/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Hnd\/\0.png \1/' >> English/labels.txt`
+            3. `cat Lists/English/Img/all_good.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Img\/\0.png \1/' >> English/labels.txt`
+            4. `shuf English/labels.txt > English/labels_mixed.txt`
+        13. Now to split the lable file...
+            1. `split -l $(expr $(cat English/labels_mixed.txt | wc -l) \* 85 / 100) English/labels_mixed.txt English/`
+                * This splits the dataset labels into files `aa` and `ab` for the training and test data respectively along with placing the label files in the right directory.
+        14. `cd ../..`
+        15. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/aa examples/chars74k/train_lmdb`
+        16. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/ab examples/chars74k/test_lmdb`
+        17. `./build/tools/compute_image_mean -backend=lmdb examples/chars74k/train_lmdb examples/chars74k/mean.binaryproto`
+    3. Next we need to train our network.
+        1. `cd ..`
+        2. `./models/chars74k/train.sh` - This takes a while.
+2. Great! Now let's test and then convert the network.
+    1. `./models/chars74k/test.sh` - You should get an accuracy of 76%.
+    2. `python2 nn_quantizer.py --gpu --model models/chars74k/chars74k_train_test.prototxt --weights models/chars74k/chars74k_iter_50000.caffemodel --save models/chars74k/chars74k.pkl` - Note how the accuracy stays at 76%.
+    3. `python2 nn_convert.py --model models/chars74k/chars74k.pkl --mean caffe/examples/chars74k/mean.binaryproto --output models/chars74k/chars74k.network`.
+    4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
+        * Fits on the H7 only.
 
 ## Train A Custom Net
 If you'd like to train your own custom CNN you need to assemble a dataset of hundreds (preferably thousands) of images of training examples. Once you've collected all the training examples save the images per class of training examples in seperate folders structed like this:
