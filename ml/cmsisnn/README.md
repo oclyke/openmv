@@ -32,6 +32,7 @@ This folder contains scripts to train, test, and quantize Caffe models and then 
     2. `python2 nn_quantizer.py --gpu --model models/cifar10/cifar10_train_test.prototxt --weights models/cifar10/cifar10_iter_70000.caffemodel.h5 --save models/cifar10/cifar10.pkl` - Note how the accuracy stays at about 80%.
     3. `python2 nn_convert.py --model models/cifar10/cifar10.pkl --mean caffe/examples/cifar10/mean.binaryproto --output models/cifar10/cifar10.network`.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network. To run the CNN copy the `models/cifar10/cifar10.network` file to your OpenMV Cam's disk and then run our CIFAR10 Machine Learning Examples.
+        * Fits on the H7 only.
 
 ## Training a CIFAR10 Fast Model
 1. Now we're going to train a CIFAR10 Fast Model which is 60% smaller than the cifar10 network with only a 2% loss in accurary.
@@ -66,6 +67,7 @@ This folder contains scripts to train, test, and quantize Caffe models and then 
     2. `python2 nn_quantizer.py --gpu --model models/lenet/lenet_train_test.prototxt --weights models/lenet/lenet_iter_10000.caffemodel --save models/lenet/lenet.pkl` - Note how the accuracy stays at about 99%.
     3. `python2 nn_convert.py --model models/lenet/lenet.pkl --mean caffe/examples/mnist/mean.binaryproto --output models/lenet/lenet.network`.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network. To run the CNN copy the `models/lenet/lenet.network` file to your OpenMV Cam's disk and then run our LENET Machine Learning Examples.
+        * Fits on the H7 only.
 
 ## Training a Smile Detection Model
 1. Now we're going to train a Smile Detection Model.
@@ -108,7 +110,7 @@ Now let's train some more useful networks.
     2. First we need to get the data and create an lmdb.
         1. `cd caffe/examples`
         2. `mkdir cnrpark`
-        3. `cd cnrpar`
+        3. `cd cnrpark`
         4. `wget http://cnrpark.it/dataset/CNRPark-Patches-150x150.zip`
         5. `unzip CNRPark-Patches-150x150.zip`
         6. `cd ../../../../..`
@@ -133,6 +135,32 @@ Now let's train some more useful networks.
 2. Great! Now let's test and then convert the network.
     1. `./models/cnrpark/test.sh` - You should get an accuracy of 100%.
         * While an accurcy this high may give you pause... If you look at the crnpark dataset you can see that a network should have no problem identifying free versus busy spaces given that the two classes of images are widly different.
+    2. `python2 nn_quantizer.py --gpu --model models/cnrpark/cnrpark_train_test.prototxt --weights models/cnrpark/cnrpark_iter_10000.caffemodel --save models/cnrpark/cnrpark.pkl` - Note how the accuracy stays at 100%.
+    3. `python2 nn_convert.py --model models/cnrpark/cnrpark.pkl --mean caffe/examples/cnrpark/mean.binaryproto --output models/cnrpark/cnrpark.network`.
+    4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
+
+### CNRPark+EXT (Extended Packing Lot Detection)
+1. Now we're going to train an Extended Parking Lot Detection Model which should be robust to alot more conditions.
+    1. Open a terminal in this folder.
+    2. First we need to get the data and create an lmdb.
+        1. `cd caffe/examples`
+        2. `mkdir cnrparkext`
+        3. `cd cnrparkext`
+        4. `wget http://cnrpark.it/dataset/CNR-EXT-Patches-150x150.zip`
+        5. `unzip CNR-EXT-Patches-150x150.zip`
+        6. The CNRPark+EXT dataset has about ~65K negative images to about ~79K positive images so it's mostly balanced and we can skip augmentation. Additionally, it comes with a label file usable for creating lmdb files so we can skip to just splitting the labels into a test and training dataset.
+            1. `split -l $(expr $(cat LABELS/all.txt | wc -l) \* 85 / 100) LABELS/all.txt PATCHES/`
+                * This splits the dataset labels into files `aa` and `ab` for the training and test data respectively along with placing the label files in the right directory.
+            2. `cd ../..`
+            3. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --shuffle examples/cnrparkext/PATCHES/ examples/cnrparkext/PATCHES/aa examples/cnrparkext/train_lmdb`
+            4. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --shuffle examples/cnrparkext/PATCHES/ examples/cnrparkext/PATCHES/ab examples/cnrparkext/test_lmdb`
+        7. `./build/tools/compute_image_mean -backend=lmdb examples/cnrparkext/train_lmdb examples/cnrparkext/mean.binaryproto`
+    3. Next we need to train our network.
+        1. `cd ..`
+        2. `./models/cnrparkext/train.sh` - This takes a while.
+2. Great! Now let's test and then convert the network.
+    1. `./models/cnrparkext/test.sh` - You should get an accuracy of 96%.
+        * This network is robust to a lot more conditions than cnrpark while being the same model size - Awesome!
     2. `python2 nn_quantizer.py --gpu --model models/cnrpark/cnrpark_train_test.prototxt --weights models/cnrpark/cnrpark_iter_10000.caffemodel --save models/cnrpark/cnrpark.pkl` - Note how the accuracy stays at 100%.
     3. `python2 nn_convert.py --model models/cnrpark/cnrpark.pkl --mean caffe/examples/cnrpark/mean.binaryproto --output models/cnrpark/cnrpark.network`.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
