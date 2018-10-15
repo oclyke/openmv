@@ -64,7 +64,7 @@ layer {
     bottom: "conv1"
     top: "conv1"
     dropout_param {
-        dropout_ratio: 0.5
+        dropout_ratio: 0.9
     }
     include {
         phase: TRAIN
@@ -118,7 +118,7 @@ layer {
     bottom: "conv2"
     top: "conv2"
     dropout_param {
-        dropout_ratio: 0.25
+        dropout_ratio: 0.5
     }
     include {
         phase: TRAIN

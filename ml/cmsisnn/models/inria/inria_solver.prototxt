@@ -6,8 +6,8 @@ test_iter: 30
 # Carry out testing every 500 training iterations.
 test_interval: 500
 # The learning rate policy
-# begin training at a learning rate of 0.0001 = 1e-4
-base_lr: 0.0001
+# begin training at a learning rate of 0.001 = 1e-3
+base_lr: 0.001
 momentum: 0.9
 weight_decay: 0.00001
 # learning rate policy: drop the learning rate in
