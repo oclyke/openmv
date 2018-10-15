@@ -202,22 +202,55 @@ Now let's train some more useful networks.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
         * Fits on the H7 only.
 
+### INRIA Person Detaset (Person Detection)
+1. Now we're going to train a person detection using the INRIA person detection dataset.
+    1. Open a terminal in this folder.
+    2. First we need to get the data and create an lmdb.
+        1. `cd caffe/examples`
+        2. `mkdir inria`
+        3. `cd inria`
+        4. `wget ftp://ftp.inrialpes.fr/pub/lear/douze/data/INRIAPerson.tar`
+        5. `tar -xvf INRIAPerson.tar`
+        6. The INRIA datset includes both tightly cropped images of people and images with just people in them. To make it easier for the network to learn we're just going to focus on training the network on the general images with people in them and not in them. The tightly cropped images don't have a negative dataset so we can't train a CNN easily with them.
+            1. `mkdir data && mkdir data/0_pos && mkdir data/1_neg`
+            2. `cp INRIAPerson/Test/neg/* data/1_neg/`
+            3. `cp INRIAPerson/Train/neg/* data/1_neg/`
+            4. `cd ../../../../..`
+            5. `sudo pip2 install opencv-python imgaug tqdm`
+            6. `python2 tools/augment_images.py --input ml/cmsisnn/caffe/examples/inria/INRIAPerson/Test/pos/ --output ml/cmsisnn/caffe/examples/inria/data/0_pos/ --count 2`
+            7. `python2 tools/augment_images.py --input ml/cmsisnn/caffe/examples/inria/INRIAPerson/Train/pos/ --output ml/cmsisnn/caffe/examples/inria/data/0_pos/ --count 2`
+            8. `mkdir ml/cmsisnn/caffe/examples/inria/lmdbin`
+            9. `python2 tools/create_labels.py --input ml/cmsisnn/caffe/examples/inria/data/ --output ml/cmsisnn/caffe/examples/inria/lmdbin/`
+            10. `cd ml/cmsisnn/caffe/`
+            11. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --shuffle examples/inria/lmdbin/ examples/inria/train.txt examples/inria/train_lmdb`
+            12. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --shuffle examples/inria/lmdbin/ examples/inria/test.txt examples/inria/test_lmdb`
+            13. `./build/tools/compute_image_mean -backend=lmdb examples/inria/train_lmdb examples/inria/mean.binaryproto`
+    3. Next we need to train our network.
+        1. `cd ..`
+        2. `./models/inria/train.sh` - This takes a while.
+2. Great! Now let's test and then convert the network.
+    1. `./models/inria/test.sh` - You should get an accuracy of 100%.
+        * While an accurcy this high may give you pause... Note that this dataset was originally built for a HoG detector which would have trouble with classifying these images. Clearly our CNN architecture is more capable and if we had a larger dataset we could expose the CNN to more variations.
+    2. `python2 nn_quantizer.py --gpu --model models/inria/inria_train_test.prototxt --weights models/inria/inria_iter_10000.caffemodel --save models/inria/inria.pkl` - Note how the accuracy stays at 100%.
+    3. `python2 nn_convert.py --model models/inria/inria.pkl --mean caffe/examples/inria/mean.binaryproto --output models/inria/inria.network`.
+    4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
+
 ## Train A Custom Net
-If you'd like to train your own custom CNN you need to assemble a dataset of hundreds (preferably thousands) of images of training examples. Once you've collected all the training examples save the images per class of training examples in seperate folders structed like this:
+If you'd like to train your own custom CNN you need to assemble a dataset of hundreds (preferably thousands) of images of training examples. Start searching [here](http://homepages.inf.ed.ac.uk/rbf/CVonline/Imagedbase.htm) if you think the dataset you need already exists. Anyway, once you've collected all the training examples save the images per class of training examples in seperate folders structed like this:
 * data/
     * 0_some_class/
     * 1_some_other_class/
     * 2_etc/
 
 Once you've built a folder structure like this please refer to the examples above to:
-1. Create a labeled training dataset using augment_images.py and create_labels.py.
+1. Create a labeled training dataset using `create_labels.py` and `augment_images.py` if you need to balance the training examples.
 2. Create training and test lmdb files.
 3. Create a mean.binaryproto file.
-4. Train the network (copy how the smile, cnrpark, etc. `train.sh` script and solver/train/test protobufs work to do this).
+4. Train the network (copy how the smile `train.sh` script and solver/train/test protobufs work to do this).
     * If your network loss is stuck at much greater than 1 then this means your `base_lr` (learning rate) is too high. Reduce it.
     * If your network accuracy goes to 1 for training and testing it
     means your network is overfitting. That said, if you 100% the test data and 100% the training data your network is probably okay.
-5. Test the network (copy how the smile, cnrpark, etc. `test.sh` script and solver/train/test protobufs works to do this).
+5. Test the network (copy how the smile `test.sh` script and solver/train/test protobufs works to do this).
 6. Quantize the network.
 7. And finally convert the network.
 
