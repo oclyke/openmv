@@ -41,7 +41,7 @@ def move_files(input, output):
         filenum = 0
         for file in (files if index == -1 else tqdm(files)):
             fileName, fileExtension = os.path.splitext(file)
-            if fileExtension == '.jpg' or fileExtension == '.JPG':
+            if fileExtension.lower() in ['.jpg', '.png', '.bmp']:
                 full_path = os.path.join(root, file)
                 # print full_path
                 if (os.path.isfile(full_path)):
