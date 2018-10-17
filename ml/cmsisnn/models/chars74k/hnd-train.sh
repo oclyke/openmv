@@ -4,4 +4,4 @@ set -e
 TOOLS=./caffe/build/tools
 
 $TOOLS/caffe train \
-    --solver=models/chars74k/chars74k_solver.prototxt $@
+    --solver=models/chars74k/hnd-chars74k_solver.prototxt $@

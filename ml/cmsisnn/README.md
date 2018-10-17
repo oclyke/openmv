@@ -181,24 +181,44 @@ Now let's train some more useful networks.
         10. `tar -xvf EnglishFnt.tgz`
         11. `tar -xvf Lists.tgz`
         12. Now to build the label file...
-            1. `cat Lists/English/Fnt/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Fnt\/\0.png \1/' > English/labels.txt`
-            2. `cat Lists/English/Hnd/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Hnd\/\0.png \1/' >> English/labels.txt`
-            3. `cat Lists/English/Img/all_good.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Img\/\0.png \1/' >> English/labels.txt`
-            4. `shuf English/labels.txt > English/labels_mixed.txt`
+            1. `cat Lists/English/Fnt/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Fnt\/\0.png \1/' > English/fnt-labels.txt`
+            2. `cat Lists/English/Hnd/all.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Hnd\/\0.png \1/' > English/hnd-labels.txt`
+            3. `cat Lists/English/Img/all_good.txt | sed 's/.*Sample\([0-9][0-9][0-9]\).*/Img\/\0.png \1/' > English/img-labels.txt`
+            4. `shuf English/fnt-labels.txt > English/fnt-labels_mixed.txt`
+            5. `shuf English/hnd-labels.txt > English/hnd-labels_mixed.txt`
+            6. `shuf English/img-labels.txt > English/img-labels_mixed.txt`
         13. Now to split the lable file...
-            1. `split -l $(expr $(cat English/labels_mixed.txt | wc -l) \* 85 / 100) English/labels_mixed.txt English/`
-                * This splits the dataset labels into files `aa` and `ab` for the training and test data respectively along with placing the label files in the right directory.
+            1. `split -l $(expr $(cat English/fnt-labels_mixed.txt | wc -l) \* 85 / 100) English/fnt-labels_mixed.txt English/fnt-`
+                * This splits the dataset labels into files `fnt-aa` and `fnt-ab` for the training and test data respectively along with placing the label files in the right directory.
+            2. `split -l $(expr $(cat English/hnd-labels_mixed.txt | wc -l) \* 85 / 100) English/hnd-labels_mixed.txt English/hnd-`
+                 * This splits the dataset labels into files `hnd-aa` and ``hnd-ab` for the training and test data respectively along with placing the label files in the right directory.
+            3. `split -l $(expr $(cat English/img-labels_mixed.txt | wc -l) \* 85 / 100) English/img-labels_mixed.txt English/img-`
+                 * This splits the dataset labels into files `img-ab` and ``img-ab` for the training and test data respectively along with placing the label files in the right directory.
         14. `cd ../..`
-        15. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/aa examples/chars74k/train_lmdb`
-        16. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/ab examples/chars74k/test_lmdb`
-        17. `./build/tools/compute_image_mean -backend=lmdb examples/chars74k/train_lmdb examples/chars74k/mean.binaryproto`
+        15. Now create the files for the font LMDB.
+            1. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/fnt-aa examples/chars74k/fnt-train_lmdb`
+            2. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/fnt-ab examples/chars74k/fnt-test_lmdb`
+            3. `./build/tools/compute_image_mean -backend=lmdb examples/chars74k/fnt-train_lmdb examples/chars74k/fnt-mean.binaryproto`
+        16. Now create the files for the handwritten LMDB.
+            1. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=48 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/hnd-aa examples/chars74k/hnd-train_lmdb`
+            2. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=48 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/hnd-ab examples/chars74k/hnd-test_lmdb`
+            3. `./build/tools/compute_image_mean -backend=lmdb examples/chars74k/hnd-train_lmdb examples/chars74k/hnd-mean.binaryproto`
+        17. Now create the files for the image LMDB.
+            1. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/img-aa examples/chars74k/img-train_lmdb`
+            2. `GLOG_logtostderr=1 ./build/tools/convert_imageset --resize_height=64 --resize_width=64 --gray --shuffle examples/chars74k/English/ examples/chars74k/English/img-ab examples/chars74k/img-test_lmdb`
+            3. `./build/tools/compute_image_mean -backend=lmdb examples/chars74k/img-train_lmdb examples/chars74k/img-mean.binaryproto`
     3. Next we need to train our network.
         1. `cd ..`
-        2. `./models/chars74k/train.sh` - This takes a while.
+        2. `./models/chars74k/fnt-train.sh` - This takes a while.
+            * Note that because our labels are 1 indexed we make the model have 63 outputs where the first output is never given any training examples and should be ignored.
+        3. `./models/chars74k/hnd-train.sh` - This takes a while.
+            * Note that because our labels are 1 indexed we make the model have 63 outputs where the first output is never given any training examples and should be ignored.
+        4. `./models/chars74k/img-train.sh` - This takes a while.
+            * Note that because our labels are 1 indexed we make the model have 63 outputs where the first output is never given any training examples and should be ignored.
 2. Great! Now let's test and then convert the network.
-    1. `./models/chars74k/test.sh` - You should get an accuracy of 76%.
-    2. `python2 nn_quantizer.py --gpu --model models/chars74k/chars74k_train_test.prototxt --weights models/chars74k/chars74k_iter_50000.caffemodel --save models/chars74k/chars74k.pkl` - Note how the accuracy stays at 76%.
-    3. `python2 nn_convert.py --model models/chars74k/chars74k.pkl --mean caffe/examples/chars74k/mean.binaryproto --output models/chars74k/chars74k.network`.
+    1. `./models/chars74k/fnt-test.sh` - You should get an accuracy of 78%.
+    2. `python2 nn_quantizer.py --gpu --model models/chars74k/fnt-chars74k_train_test.prototxt --weights models/chars74k/fnt-chars74k_iter_10000.caffemodel --save models/chars74k/fnt-chars74k.pkl` - Note how the accuracy stays at 78%.
+    3. `python2 nn_convert.py --model models/chars74k/fnt-chars74k.pkl --mean caffe/examples/chars74k/fnt-mean.binaryproto --output models/chars74k/fnt-chars74k.network`.
     4. And that's it! You've created a CNN that will run on the OpenMV Cam! Keep in mind that your OpenMV Cam has limited weight/bias heap space so this limits the size of the network.
         * Fits on the H7 only.
 

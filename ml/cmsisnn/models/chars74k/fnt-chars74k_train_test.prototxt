@@ -8,10 +8,10 @@ layer {
     phase: TRAIN
   }
   transform_param {
-    mean_file: "caffe/examples/chars74k/mean.binaryproto"
+    mean_file: "caffe/examples/chars74k/fnt-mean.binaryproto"
   }
   data_param {
-    source: "caffe/examples/chars74k/train_lmdb"
+    source: "caffe/examples/chars74k/fnt-train_lmdb"
     batch_size: 100
     backend: LMDB
   }
@@ -25,10 +25,10 @@ layer {
     phase: TEST
   }
   transform_param {
-    mean_file: "caffe/examples/chars74k/mean.binaryproto"
+    mean_file: "caffe/examples/chars74k/fnt-mean.binaryproto"
   }
   data_param {
-    source: "caffe/examples/chars74k/test_lmdb"
+    source: "caffe/examples/chars74k/fnt-test_lmdb"
     batch_size: 48
     backend: LMDB
   }
@@ -101,8 +101,8 @@ layer {
   convolution_param {
     num_output: 32
     pad: 1
-    kernel_size: 3
-    stride: 1
+    kernel_size: 5
+    stride: 2
     weight_filler {
       type: "gaussian"
       std: 0.01
@@ -147,10 +147,10 @@ layer {
   bottom: "pool2"
   top: "conv3"
   convolution_param {
-    num_output: 32
+    num_output: 64
     pad: 1
-    kernel_size: 3
-    stride: 1
+    kernel_size: 5
+    stride: 2
     weight_filler {
       type: "gaussian"
       std: 0.01
@@ -201,7 +201,7 @@ layer {
     lr_mult: 2
   }
   inner_product_param {
-    num_output: 62
+    num_output: 63
     weight_filler {
       type: "gaussian"
       std: 0.01
