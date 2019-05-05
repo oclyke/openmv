@@ -7,6 +7,7 @@ endif
 
 # Commands
 CC      = $(Q)arm-none-eabi-gcc
+CXX     = $(Q)arm-none-eabi-g++
 AS      = $(Q)arm-none-eabi-as
 LD      = $(Q)arm-none-eabi-ld
 AR      = $(Q)arm-none-eabi-ar
@@ -40,6 +41,7 @@ OMV_DIR=omv
 LEPTON_DIR=lepton
 MLX_DIR=mlx
 WINC1500_DIR=winc1500
+TENSORFLOW_DIR=libtf
 BOOTLDR_DIR=bootloader
 UVC_DIR=uvc
 
@@ -107,6 +109,7 @@ OMV_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
 OMV_CFLAGS += -I$(TOP_DIR)/$(LEPTON_DIR)/include/
 OMV_CFLAGS += -I$(TOP_DIR)/$(MLX_DIR)/include/
 OMV_CFLAGS += -I$(TOP_DIR)/$(WINC1500_DIR)/include/
+OMV_CFLAGS += -I$(TOP_DIR)/$(TENSORFLOW_DIR)/$(TARGET)/
 
 UVC_CFLAGS = $(CFLAGS)
 UVC_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
@@ -249,6 +252,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_winc.o                               \
 	py_cpufreq.o                            \
 	py_nn.o                                 \
+	py_tf.o                                 \
 	)
 
 
@@ -413,6 +417,8 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/drivers/,\
 	memory/spiflash.o   \
 	)
 
+FIRM_OBJ += $(wildcard $(TOP_DIR)/$(TENSORFLOW_DIR)/$(TARGET)/*.a)
+
 # Bootloader object files
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
@@ -502,7 +508,7 @@ FIRMWARE_OBJS:
 # This target generates the main/app firmware image located at 0x08010000
 $(FIRMWARE): FIRMWARE_OBJS
 	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OMV_DIR)/stm32fxxx.ld.S > $(BUILD)/stm32fxxx.lds
-	$(CC) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
+	$(CXX) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
 	$(OBJCOPY) -Obinary $(FW_DIR)/$(FIRMWARE).elf $(FW_DIR)/$(FIRMWARE).bin
 	$(PYTHON) $(MKDFU) -b $(MAIN_APP_ADDR):$(FW_DIR)/$(FIRMWARE).bin $(FW_DIR)/$(FIRMWARE).dfu
 

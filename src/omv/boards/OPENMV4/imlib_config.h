@@ -126,8 +126,11 @@
 // Enable CMSIS NN
 #define IMLIB_ENABLE_CNN
 
+// Enable Tensor Flow
+#define IMLIB_ENABLE_TF
+
 // Enable FAST (20+ KBs).
-#define IMLIB_ENABLE_FAST
+//#define IMLIB_ENABLE_FAST
 
 // Enable find_template()
 #define IMLIB_FIND_TEMPLATE
