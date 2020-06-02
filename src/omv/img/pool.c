@@ -95,6 +95,7 @@ void imlib_midpoint_pool(image_t *img_i, image_t *img_o, int x_div, int y_div, c
 void imlib_mean_pool(image_t *img_i, image_t *img_o, int x_div, int y_div)
 {
     int n = x_div * y_div;
+    uint32_t nmul = 65536 / n;
     switch(img_i->bpp)
     {
         case IMAGE_BPP_BINARY:
@@ -103,13 +104,17 @@ void imlib_mean_pool(image_t *img_i, image_t *img_o, int x_div, int y_div)
                 uint32_t *row_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(img_o, y);
                 for (int x = 0, xx = img_i->w / x_div, xxx = (img_i->w % x_div) / 2; x < xx; x++) {
                     int acc = 0;
-                    for (int i = 0; i < y_div; i++) {
-                        for (int j = 0; j < x_div; j++) {
-                            int pixel = IMAGE_GET_BINARY_PIXEL(img_i, xxx + (x * x_div) + j, yyy + (y * y_div) + i);
+                    int tx = xxx + (x * x_div);
+                    int ty = yyy + (y * y_div);
+                    for (int i = ty; i < ty+y_div; i++) {
+                        uint32_t *src_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(img_i, i);
+                        for (int j = tx; j < tx+x_div; j++) {
+                            int pixel = IMAGE_GET_BINARY_PIXEL_FAST(src_ptr, j);
                             acc += pixel;
                         }
                     }
-                    IMAGE_PUT_BINARY_PIXEL_FAST(row_ptr, x, acc / n);
+                    acc = (acc * nmul) >> 16;
+                    IMAGE_PUT_BINARY_PIXEL_FAST(row_ptr, x, acc);
                 }
             }
             break;
@@ -120,13 +125,17 @@ void imlib_mean_pool(image_t *img_i, image_t *img_o, int x_div, int y_div)
                 uint8_t *row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(img_o, y);
                 for (int x = 0, xx = img_i->w / x_div, xxx = (img_i->w % x_div) / 2; x < xx; x++) {
                     int acc = 0;
-                    for (int i = 0; i < y_div; i++) {
-                        for (int j = 0; j < x_div; j++) {
-                            int pixel = IMAGE_GET_GRAYSCALE_PIXEL(img_i, xxx + (x * x_div) + j, yyy + (y * y_div) + i);
+                    int ty = yyy + (y * y_div);
+                    int tx = xxx + (x * x_div);
+                    for (int i = ty; i < ty+y_div; i++) {
+                        uint8_t *src_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(img_i, i);
+                        for (int j = tx; j < tx+x_div; j++) {
+                            int pixel = IMAGE_GET_GRAYSCALE_PIXEL_FAST(src_ptr, j);
                             acc += pixel;
                         }
                     }
-                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(row_ptr, x, acc / n);
+                    acc = (acc * nmul) >> 16;
+                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(row_ptr, x, acc);
                 }
             }
             break;
@@ -139,15 +148,21 @@ void imlib_mean_pool(image_t *img_i, image_t *img_o, int x_div, int y_div)
                     int r_acc = 0;
                     int g_acc = 0;
                     int b_acc = 0;
-                    for (int i = 0; i < y_div; i++) {
-                        for (int j = 0; j < x_div; j++) {
-                            int pixel = IMAGE_GET_RGB565_PIXEL(img_i, xxx + (x * x_div) + j, yyy + (y * y_div) + i);
+                    int ty = yyy + (y * y_div);
+                    int tx = xxx + (x * x_div);
+                    for (int i = ty; i < ty+y_div; i++) {
+                        uint16_t *src_ptr = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(img_i, i);
+                        for (int j = tx; j < tx+x_div; j++) {
+                            int pixel = IMAGE_GET_RGB565_PIXEL_FAST(src_ptr, j);
                             r_acc += COLOR_RGB565_TO_R5(pixel);
                             g_acc += COLOR_RGB565_TO_G6(pixel);
                             b_acc += COLOR_RGB565_TO_B5(pixel);
                         }
                     }
-                    IMAGE_PUT_RGB565_PIXEL_FAST(row_ptr, x, COLOR_R5_G6_B5_TO_RGB565(r_acc / n, g_acc / n, b_acc / n));
+                    r_acc = (r_acc * nmul) >> 16;
+                    g_acc = (g_acc * nmul) >> 16;
+                    b_acc = (b_acc * nmul) >> 16;
+                    IMAGE_PUT_RGB565_PIXEL_FAST(row_ptr, x, COLOR_R5_G6_B5_TO_RGB565(r_acc, g_acc, b_acc));
                 }
             }
             break;
