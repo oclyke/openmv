@@ -924,17 +924,201 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
             } // switch on bpp
         y_accum += y_frac;
         } // for y
-//    } else if (hint & IMAGE_HINT_BICUBIC) {
+    } else if (hint & IMAGE_HINT_BICUBIC) {
+        // Work from destination back to source
+        for (int y = dest_y_start; y < dest_y_end; y++) {
+            if (y & 1) {
+                cache_line_top = cache_line_2;
+            } else {
+                cache_line_top = cache_line_1;
+            }
+            switch (src_img->bpp) {
+                case IMAGE_BPP_BINARY:
+                {
+                }
+                break;
 
+                case IMAGE_BPP_GRAYSCALE:
+                {
+                    uint8_t *s[4]; // 4 rows
+                    uint8_t pix0,pix1,pix2,pix3; // 4 columns
+                    float dx, dy, d0,d2,d3,a0,a1,a2,a3,C[4], Cc;
+                    uint8_t *dest_row_ptr = cache_line_top;
+                    uint8_t *d = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
+                    int ty = y_accum >> 16;
+                    if (ty >= src_img->h) ty = src_img->h-1;
+                    dy = (y_accum & 0xffff) / 65536.0f;
+                    s[0] = s[1] = s[2] = s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty);
+                    if (ty >= 1)
+                       s[0] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty-1); 
+                    if (ty < src_img->h-1)
+                       s[2] = s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty+1);
+                    if (ty < src_img->h-2)
+                       s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty+2);
+                    x_accum = src_x_start << 16;
+                    for (int x = dest_x_start; x < dest_x_end; x++) {
+                        int tx = x_accum >> 16;
+                        dx = (x_accum & 0xffff) / 65536.0f;
+                        if (tx >= src_img->w) tx = src_img->w-1;
+                        for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
+                            if (tx > 0) {
+                                pix0 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx-1);
+                                pix1 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx);
+                            } else {
+                                pix0 = pix1 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx);
+                            }
+                            if (tx >= src_img->w-1) {
+                                pix2 = pix3 = pix1; // hit right edge
+                            } else {
+                                pix2 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+1);
+                                if (tx > src_img->w-2)
+                                    pix3 = pix2;
+                                else
+                                    pix3 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+2);
+                            }
+                            pix2 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+1);
+                            pix3 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+2);
+                            d0 = pix0 - pix1; // s[-1] - s[0]
+                            d2 = pix2 - pix1; // s[1] - s[0]
+                            d3 = pix3 - pix1; // s[2] - s[0]
+                            a0 = pix1; // s[0]
+                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                            C[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                        } // or j
+                        d0 = C[0]-C[1];
+                        d2 = C[2]-C[1];
+                        d3 = C[3]-C[1];
+                        a0 = C[1];
+                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                        Cc = a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy;
+                        if (Cc > 255) Cc = 255;
+                        else if (Cc < 0) Cc = 0;
+                        IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, x, (uint8_t)Cc);
+                        x_accum += x_frac;
+                    } // for x
+                    imlib_combine_alpha(alpha, alpha_palette, cache_line_top, (uint8_t *)d, dest_x_start, dest_x_end, dest_img->bpp);
+                }
+                break;
+
+                case IMAGE_BPP_RGB565:
+                {
+                    uint16_t *s[4]; // 4 rows
+                    uint16_t pix0,pix1,pix2,pix3; // 4 columns
+                    float dx, dy, d0,d2,d3,a0,a1,a2,a3;
+                    float C_R[4], C_G[4], C_B[4], Cr, Cg, Cb;
+                    uint16_t *dest_row_ptr = (uint16_t*)cache_line_top;
+                    uint16_t *d = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, y);
+                    int ty = y_accum >> 16;
+                    if (ty >= src_img->h) ty = src_img->h-1;
+                    dy = (y_accum & 0xffff) / 65536.0f;
+                    s[0] = s[1] = s[2] = s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty);
+                    if (ty >= 1)
+                       s[0] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty-1);
+                    if (ty < src_img->h-1)
+                       s[2] = s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty+1);
+                    if (ty < src_img->h-2)
+                       s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty+2);
+                    x_accum = src_x_start << 16;
+                    for (int x = dest_x_start; x < dest_x_end; x++) {
+                        int tx = x_accum >> 16;
+                        dx = (x_accum & 0xffff) / 65536.0f;
+                        if (tx >= src_img->w) tx = src_img->w-1;
+                        for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
+                            if (tx > 0) {
+                                pix0 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx-1);
+                                pix1 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx);
+                            } else {
+                                pix0 = pix1 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx);
+                            }
+                            if (tx >= src_img->w-1) {
+                                pix2 = pix3 = pix1; // hit right edge
+                            } else {
+                                pix2 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx+1);
+                                if (tx > src_img->w-2)
+                                    pix3 = pix2;
+                                else
+                                    pix3 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx+2);
+                            }
+                            // Red
+                            d0 = COLOR_RGB565_TO_R5(pix0) - COLOR_RGB565_TO_R5(pix1);
+                            d2 = COLOR_RGB565_TO_R5(pix2) - COLOR_RGB565_TO_R5(pix1);
+                            d3 = COLOR_RGB565_TO_R5(pix3) - COLOR_RGB565_TO_R5(pix1);
+                            a0 = COLOR_RGB565_TO_R5(pix1); 
+                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                            C_R[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                            // Green
+                            d0 = COLOR_RGB565_TO_G6(pix0) - COLOR_RGB565_TO_G6(pix1);
+                            d2 = COLOR_RGB565_TO_G6(pix2) - COLOR_RGB565_TO_G6(pix1);
+                            d3 = COLOR_RGB565_TO_G6(pix3) - COLOR_RGB565_TO_G6(pix1);
+                            a0 = COLOR_RGB565_TO_G6(pix1);
+                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2; 
+                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                            C_G[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                            // Blue
+                            d0 = COLOR_RGB565_TO_B5(pix0) - COLOR_RGB565_TO_B5(pix1);
+                            d2 = COLOR_RGB565_TO_B5(pix2) - COLOR_RGB565_TO_B5(pix1);
+                            d3 = COLOR_RGB565_TO_B5(pix3) - COLOR_RGB565_TO_B5(pix1);
+                            a0 = COLOR_RGB565_TO_B5(pix1);
+                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2; 
+                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                            C_B[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                        } // or j
+                        // output final pixel, R first
+                        d0 = C_R[0]-C_R[1];
+                        d2 = C_R[2]-C_R[1];
+                        d3 = C_R[3]-C_R[1];
+                        a0 = C_R[1];
+                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                        Cr = a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy;
+                        d0 = C_G[0]-C_G[1];
+                        d2 = C_G[2]-C_G[1];
+                        d3 = C_G[3]-C_G[1];
+                        a0 = C_G[1];
+                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                        Cg = a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy;
+                        d0 = C_B[0]-C_B[1];
+                        d2 = C_B[2]-C_B[1];
+                        d3 = C_B[3]-C_B[1];
+                        a0 = C_B[1];
+                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
+                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
+                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
+                        Cb = a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy;
+                        if (Cr < 0) Cr = 0;
+                        else if (Cr > COLOR_R5_MAX) Cr = COLOR_R5_MAX;
+                        if (Cg < 0) Cg = 0;
+                        else if (Cg > COLOR_G6_MAX) Cg = COLOR_G6_MAX;
+                        if (Cb < 0) Cb = 0;
+                        else if (Cb > COLOR_B5_MAX) Cb = COLOR_B5_MAX;
+                        pix0 = COLOR_R5_G6_B5_TO_RGB565((uint8_t)Cr, (uint8_t)Cg, (uint8_t)Cb);
+                        IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, x, pix0);
+                        x_accum += x_frac;
+                    } // for x
+                    imlib_combine_alpha(alpha, alpha_palette, cache_line_top, (uint8_t *)d, dest_x_start, dest_x_end, dest_img->bpp);
+                }
+                break;
+            } // switch on bpp
+            y_accum += y_frac;
+        } // for y
     } else { // nearest neighbor
         // Work from destination back to source
         for (int y = dest_y_start; y < dest_y_end; y++) {
             if (y & 1) {
                 cache_line_top = cache_line_2;
-//                cache_line_bottom = cache_line_1;
             } else {
                 cache_line_top = cache_line_1;
-//                cache_line_bottom = cache_line_2;
             }
             switch (src_img->bpp) {
                 case IMAGE_BPP_BINARY:
