@@ -822,27 +822,35 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     uint8_t *s1, *s2;
                     uint8_t *dest_row_ptr = cache_line_top;
                     uint8_t *d = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
-                    uint32_t ysrc, xsubfrac, ysubfrac;
-                    ysrc = y_accum >> 16;
+                    uint32_t xsubfrac, ysubfrac;
+                    int32_t ysrc, y_frac_src;
+                    y_frac_src = (int32_t)y_accum - 0x8000;
+                    ysrc = y_frac_src >> 16;
                     // keep source pointer from going out of bounds
                     if (ysrc >= src_img->h-1)
                        ysrc = src_img->h-1;
-                    s1 = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ysrc);
-                    if (ysrc+1 >= src_img->h)
-                        s2 = s1;
-                    else
+                    if (ysrc >= src_img->h-1)
+                       ysrc = src_img->h-1;
+                    if (ysrc >= src_img->h-1 || ysrc < 0) {
+                        if (ysrc < 0) ysrc = 0;
+                        s2 = s1 = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ysrc);
+                    } else {
+                        s1 = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ysrc);
                         s2 = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ysrc+1);
-                    ysubfrac = ((y_accum & 0xffff) >> 8);
+                    }
+                    ysubfrac = ((y_frac_src & 0xffff) >> 8);
                     ysubfrac |= ((256 - ysubfrac) << 16);
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int x00 = x_accum >> 16;
+                        int32_t x_frac_src = (int32_t)x_accum - 0x8000;
+                        int32_t x00 = (x_frac_src >> 16);
                         uint32_t pix00, pix10, pix01, pix11, pixTop, pixBot;
-                        xsubfrac = (x_accum & 0xffff) >> 8; // x fractional part only
+                        xsubfrac = (x_frac_src & 0xffff) >> 8; // x fractional part only
                         xsubfrac |= ((256 - xsubfrac) << 16);
                         if (x00 >= src_img->w)
                             x00 = src_img->w-1;
-                        if (x00 == src_img->w-1) { // keep it within source image bounds
+                        if (x00 == src_img->w-1 || x00 < 0) { // keep it within source image bounds
+                            if (x00 < 0) x00 = 0;
                             pix00 = pix10 = s1[x00];
                             pix01 = pix11 = s2[x00];
                         } else {
@@ -864,29 +872,35 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     uint16_t *s1, *s2;
                     uint16_t *dest_row_ptr = (uint16_t *)cache_line_top;
                     uint16_t *d = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, y);
-                    uint32_t ysrc, xfrac_2,xsubfrac, yfrac_2, ysubfrac;
+                    uint32_t xfrac_2,xsubfrac, yfrac_2, ysubfrac;
+                    int32_t y_frac_src, ysrc;
                     uint32_t rb_mask = 0xf81f;
-                    ysrc = y_accum >> 16;
+                    y_frac_src = (int32_t)y_accum - 0x8000;
+                    ysrc = (y_frac_src >> 16);
                     // keep source pointer from going out of bounds
                     if (ysrc >= src_img->h-1)
                        ysrc = src_img->h-1;
-                    s1 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ysrc);
-                    if (ysrc+1 >= src_img->h)
-                        s2 = s1;
-                    else
+                    if (ysrc >= src_img->h-1 || ysrc < 0) {
+                        if (ysrc < 0) ysrc = 0;
+                        s2 = s1 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ysrc); 
+                    } else {
+                        s1 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ysrc);
                         s2 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ysrc+1);
-                    ysubfrac = ((y_accum & 0xffff) >> 11); // use it as a 5-bit fraction
+                    }
+                    ysubfrac = ((y_frac_src & 0xffff) >> 11); // use it as a 5-bit fraction
                     yfrac_2 = ((32-ysubfrac)<<16) + ysubfrac;
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int x00 = x_accum >> 16;
+                        int32_t x_frac_src = (int32_t)x_accum - 0x8000;
+                        int32_t x00 = (x_frac_src >> 16);
                         uint32_t g00, g10, g01, g11, gTop, gBot, rbTop, rbBot; // green
                         uint32_t rb00, rb10, rb01, rb11; // red+blue
-                        xsubfrac = (x_accum & 0xffff) >> 11; // x fractional part only
+                        xsubfrac = (x_frac_src & 0xffff) >> 11; // x fractional part only
                         xfrac_2 = ((32-xsubfrac)<<16) + xsubfrac;
                         if (x00 >= src_img->w)
                             x00 = src_img->w-1;
-                        if (x00 == src_img->w-1) { // keep it within source image bounds
+                        if (x00 == src_img->w-1 || x00 < 0) { // keep it within source image bounds
+                            if (x00 < 0) x00 = 0;
                             g00 = g10 = s1[x00];
                             g01 = g11 = s2[x00];
                         } else {
@@ -941,16 +955,22 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     float dx, dy, d0,d2,d3,a0,a1,a2,a3,C[4], Cc;
                     uint32_t *d = (uint32_t *)cache_line_top;
                     uint32_t *dest_row_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, y);
-                    int ty = y_accum >> 16;
-                    if (ty >= src_img->h) ty = src_img->h-1;
-                    dy = (y_accum & 0xffff) / 65536.0f;
-                    s[0] = s[1] = s[2] = s[3] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, ty);
-                    if (ty >= 1)
-                       s[0] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, ty-1);
-                    if (ty < src_img->h-1)
-                       s[2] = s[3] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, ty+1);
-                    if (ty < src_img->h-2)
-                       s[3] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, ty+2);
+                    int32_t y_frac_src = (int32_t)y_accum - 0x8000;
+                    int32_t tty, ty = y_frac_src >> 16;
+                    dy = (y_frac_src & 0xffff) / 65536.0f;
+                    tty = ty-1; // line above
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[0] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty; // current line
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[1] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 1; // line below
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[2] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 2; // line below + 1
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[3] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
+
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int tx = x_accum >> 16;
@@ -1004,37 +1024,40 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     float dx, dy, d0,d2,d3,a0,a1,a2,a3,C[4];
                     uint8_t *d = cache_line_top;
                     uint8_t *dest_row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
-                    int ty = y_accum >> 16;
-                    if (ty >= src_img->h) ty = src_img->h-1;
-                    dy = (y_accum & 0xffff) / 65536.0f;
-                    s[0] = s[1] = s[2] = s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty);
-                    if (ty >= 1)
-                       s[0] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty-1); 
-                    if (ty < src_img->h-1)
-                       s[2] = s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty+1);
-                    if (ty < src_img->h-2)
-                       s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty+2);
+                    int32_t y_frac_src, x_frac_src, ty, tty, ttx;
+                    y_frac_src = (int32_t)y_accum - 0x8000;
+                    ty = y_frac_src >> 16;
+                    dy = (y_frac_src & 0xffff) / 65536.0f;
+                    tty = ty-1; // line above
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[0] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty; // current line
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[1] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 1; // line below
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[2] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 2; // line below + 1
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
                     x_accum = src_x_start << 16;
+                    x_frac_src = (int32_t)x_accum - 0x8000;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int tx = x_accum >> 16;
-                        dx = (x_accum & 0xffff) / 65536.0f;
-                        if (tx >= src_img->w) tx = src_img->w-1;
+                        int tx = x_frac_src >> 16;
+                        dx = (x_frac_src & 0xffff) / 65536.0f;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
-                            if (tx > 0) {
-                                pix0 = (int)IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx-1);
-                                pix1 = (int)IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx);
-                            } else {
-                                pix0 = pix1 = (int)IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx);
-                            }
-                            if (tx >= src_img->w-1) {
-                                pix2 = pix3 = pix1; // hit right edge
-                            } else {
-                                pix2 = (int)IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+1);
-                                if (tx > src_img->w-2)
-                                    pix3 = pix2;
-                                else
-                                    pix3 = (int)IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], tx+2);
-                            }
+                            ttx = tx - 1; // left of center
+                            ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix0 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], ttx);
+                            ttx = tx;  // center
+                            ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix1 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], ttx);
+                            ttx = tx + 1;
+                            ttx = (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix2 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], ttx);
+                            ttx = tx + 2;
+                            ttx = (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix3 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], ttx);
                             d0 = pix0 - pix1; // s[-1] - s[0]
                             d2 = pix2 - pix1; // s[1] - s[0]
                             d3 = pix3 - pix1; // s[2] - s[0]
@@ -1055,7 +1078,7 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                         if (pix0 > 255) pix0 = 255;
                         else if (pix0 < 0) pix0 = 0;
                         IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, x, (uint8_t)pix0);
-                        x_accum += x_frac;
+                        x_frac_src += x_frac;
                     } // for x
                     imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_row_ptr, dest_x_start, dest_x_end, dest_img->bpp);
                 }
@@ -1070,59 +1093,62 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     int Cr, Cg, Cb;
                     uint16_t *d = (uint16_t*)cache_line_top;
                     uint16_t *dest_row_ptr = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, y);
-                    int ty = y_accum >> 16;
-                    if (ty >= src_img->h) ty = src_img->h-1;
-                    dy = (y_accum & 0xffff) / 65536.0f;
-                    s[0] = s[1] = s[2] = s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty);
-                    if (ty >= 1)
-                       s[0] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty-1);
-                    if (ty < src_img->h-1)
-                       s[2] = s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty+1);
-                    if (ty < src_img->h-2)
-                       s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty+2);
-                    x_accum = src_x_start << 16;
+                    int32_t y_frac_src, x_frac_src, ty, tty;
+                    y_frac_src = (int32_t)y_accum - 0x8000;
+                    ty = y_frac_src >> 16;
+                    dy = (y_frac_src & 0xffff) / 65536.0f;
+                    tty = ty-1; // line above
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[0] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty; // current line
+                    tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[1] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 1; // line below
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[2] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, tty);
+                    tty = ty + 2; // line below + 1
+                    tty = (tty >= src_img->h) ? (src_img->h -1): tty;
+                    s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, tty);
+                    x_frac_src = (src_x_start << 16) - 0x8000;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int tx = x_accum >> 16;
-                        dx = (x_accum & 0xffff) / 65536.0f;
-                        if (tx >= src_img->w) tx = src_img->w-1;
+                        int32_t tx, ttx;
+                        tx = x_frac_src >> 16;
+                        dx = (x_frac_src & 0xffff) / 65536.0f;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
-                            if (tx > 0) {
-                                pix0 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx-1);
-                                pix1 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx);
-                            } else {
-                                pix0 = pix1 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx);
-                            }
-                            if (tx >= src_img->w-1) {
-                                pix2 = pix3 = pix1; // hit right edge
-                            } else {
-                                pix2 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx+1);
-                                if (tx > src_img->w-2)
-                                    pix3 = pix2;
-                                else
-                                    pix3 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], tx+2);
-                            }
+                            ttx = tx - 1; // left of center
+                            ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix0 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], ttx);
+                            ttx = tx;  // center
+                            ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix1 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], ttx);
+                            ttx = tx + 1;
+                            ttx = (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix2 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], ttx);
+                            ttx = tx + 2;
+                            ttx = (ttx >= src_img->w) ? (src_img->w -1): ttx;
+                            pix3 = IMAGE_GET_RGB565_PIXEL_FAST(s[j], ttx);
                             // Red
-                            d0 = COLOR_RGB565_TO_R5(pix0) - COLOR_RGB565_TO_R5(pix1);
-                            d2 = COLOR_RGB565_TO_R5(pix2) - COLOR_RGB565_TO_R5(pix1);
-                            d3 = COLOR_RGB565_TO_R5(pix3) - COLOR_RGB565_TO_R5(pix1);
+                            d0 = (int)COLOR_RGB565_TO_R5(pix0) - (int)COLOR_RGB565_TO_R5(pix1);
+                            d2 = (int)COLOR_RGB565_TO_R5(pix2) - (int)COLOR_RGB565_TO_R5(pix1);
+                            d3 = (int)COLOR_RGB565_TO_R5(pix3) - (int)COLOR_RGB565_TO_R5(pix1);
                             a0 = COLOR_RGB565_TO_R5(pix1); 
                             a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
                             a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
                             a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
                             C_R[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
                             // Green
-                            d0 = COLOR_RGB565_TO_G6(pix0) - COLOR_RGB565_TO_G6(pix1);
-                            d2 = COLOR_RGB565_TO_G6(pix2) - COLOR_RGB565_TO_G6(pix1);
-                            d3 = COLOR_RGB565_TO_G6(pix3) - COLOR_RGB565_TO_G6(pix1);
+                            d0 = (int)COLOR_RGB565_TO_G6(pix0) - (int)COLOR_RGB565_TO_G6(pix1);
+                            d2 = (int)COLOR_RGB565_TO_G6(pix2) - (int)COLOR_RGB565_TO_G6(pix1);
+                            d3 = (int)COLOR_RGB565_TO_G6(pix3) - (int)COLOR_RGB565_TO_G6(pix1);
                             a0 = COLOR_RGB565_TO_G6(pix1);
                             a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
                             a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2; 
                             a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
                             C_G[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
                             // Blue
-                            d0 = COLOR_RGB565_TO_B5(pix0) - COLOR_RGB565_TO_B5(pix1);
-                            d2 = COLOR_RGB565_TO_B5(pix2) - COLOR_RGB565_TO_B5(pix1);
-                            d3 = COLOR_RGB565_TO_B5(pix3) - COLOR_RGB565_TO_B5(pix1);
+                            d0 = (int)COLOR_RGB565_TO_B5(pix0) - (int)COLOR_RGB565_TO_B5(pix1);
+                            d2 = (int)COLOR_RGB565_TO_B5(pix2) - (int)COLOR_RGB565_TO_B5(pix1);
+                            d3 = (int)COLOR_RGB565_TO_B5(pix3) - (int)COLOR_RGB565_TO_B5(pix1);
                             a0 = COLOR_RGB565_TO_B5(pix1);
                             a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
                             a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2; 
@@ -1162,7 +1188,7 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                         else if (Cb > COLOR_B5_MAX) Cb = COLOR_B5_MAX;
                         pix0 = COLOR_R5_G6_B5_TO_RGB565((uint8_t)Cr, (uint8_t)Cg, (uint8_t)Cb);
                         IMAGE_PUT_RGB565_PIXEL_FAST(d, x, pix0);
-                        x_accum += x_frac;
+                        x_frac_src += x_frac;
                     } // for x
                     imlib_combine_alpha(alpha, alpha_palette, cache_line_top, (uint8_t *)dest_row_ptr, dest_x_start, dest_x_end, dest_img->bpp);
                 }
