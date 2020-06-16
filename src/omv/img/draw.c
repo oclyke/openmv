@@ -952,7 +952,7 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     uint32_t *s[4]; // 4 rows
                     // the pixels need to be signed integers for the BICUBIC calc
                     int pix0,pix1,pix2,pix3; // 4 columns
-                    float dx, dy, d0,d2,d3,a0,a1,a2,a3,C[4], Cc;
+                    float dx, dy, d0,d1,d2,d3,a0,a1,a2,C[4], Cc;
                     uint32_t *d = (uint32_t *)cache_line_top;
                     uint32_t *dest_row_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, y);
                     int32_t y_frac_src = (int32_t)y_accum - 0x8000;
@@ -992,23 +992,23 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                                 else
                                     pix3 = (int)IMAGE_GET_BINARY_PIXEL_FAST(s[j], tx+2);
                             }
-                            d0 = pix0 - pix1; // s[-1] - s[0]
-                            d2 = pix2 - pix1; // s[1] - s[0]
-                            d3 = pix3 - pix1; // s[2] - s[0]
-                            a0 = pix1; // s[0]
-                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
-                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
-                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
-                            C[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                            d0 = pix0;
+                            d1 = pix1;
+                            d2 = pix2;
+                            d3 = pix3;
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                         } // or j
-                        d0 = C[0]-C[1];
-                        d2 = C[2]-C[1];
-                        d3 = C[3]-C[1];
-                        a0 = C[1];
-                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
-                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
-                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
-                        Cc = a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy;
+                        d0 = C[0];
+                        d1 = C[1];
+                        d2 = C[2];
+                        d3 = C[3];
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        Cc = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
                         IMAGE_PUT_BINARY_PIXEL_FAST(d, x, (Cc >= 0.5f));
                         x_accum += x_frac;
                     } // for x
@@ -1021,7 +1021,7 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                     uint8_t *s[4]; // 4 rows
                     // the pixels need to be signed integers for BICUBIC
                     int pix0,pix1,pix2,pix3; // 4 columns
-                    float dx, dy, d0,d2,d3,a0,a1,a2,a3,C[4];
+                    float dx, dy, d0,d1,d2,d3,a0,a1,a2,C[4];
                     uint8_t *d = cache_line_top;
                     uint8_t *dest_row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
                     int32_t y_frac_src, x_frac_src, ty, tty, ttx;
@@ -1058,23 +1058,23 @@ uint8_t *cache_line_top;//, *cache_line_bottom;
                             ttx = tx + 2;
                             ttx = (ttx >= src_img->w) ? (src_img->w -1): ttx;
                             pix3 = IMAGE_GET_GRAYSCALE_PIXEL_FAST(s[j], ttx);
-                            d0 = pix0 - pix1; // s[-1] - s[0]
-                            d2 = pix2 - pix1; // s[1] - s[0]
-                            d3 = pix3 - pix1; // s[2] - s[0]
-                            a0 = pix1; // s[0]
-                            a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
-                            a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
-                            a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
-                            C[j] = a0 + a1*dx + a2*dx*dx + a3*dx*dx*dx;
+                            d0 = pix0;
+                            d1 = pix1;
+                            d2 = pix2;
+                            d3 = pix3;
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                         } // or j
-                        d0 = C[0]-C[1];
-                        d2 = C[2]-C[1];
-                        d3 = C[3]-C[1];
-                        a0 = C[1];
-                        a1 =  (-1.0f/3.0f)*d0 + d2 - (1.0f/6.0f)*d3;
-                        a2 = (1.0f/2.0f)*d0 + (1.0f/2.0f)*d2;
-                        a3 = (-1.0f/6.0f)*d0 - (1.0f/2.0f)*d2 + (1.0f/6.0f)*d3;
-                        pix0 = (int)(a0 + a1*dy + a2*dy*dy + a3*dy*dy*dy);
+                        d0 = C[0];
+                        d1 = C[1];
+                        d2 = C[2];
+                        d3 = C[3];
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        pix0 = (int)(d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy);
                         if (pix0 > 255) pix0 = 255;
                         else if (pix0 < 0) pix0 = 0;
                         IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, x, (uint8_t)pix0);
