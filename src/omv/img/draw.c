@@ -1090,17 +1090,13 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint8_t *s[4]; // 4 rows
                     // the pixels need to be signed integers for BICUBIC
                     int32_t pix0,pix1,pix2,pix3; // 4 columns
-                    int32_t dx,dx2,dx3,dy,dy2,dy3;
-                    int32_t d0,d1,d2,d3,a0,a1,a2,C[4];
-//                    float dx, dy, d0,d1,d2,d3,a0,a1,a2,C[4];
+                    float dx, dy, d0,d1,d2,d3,a0,a1,a2,C[4];
                     uint8_t *d = cache_line_top;
                     uint8_t *dest_row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
                     int32_t y_frac_src, x_frac_src, ty, tty, ttx;
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ty = y_frac_src >> 16;
-                    dy = (y_frac_src & 0xffff) >> 1;
-                    dy2 = (dy * dy) >> 15;
-                    dy3 = (dy2 * dy) >> 15;
+                    dy = (y_frac_src & 0xffff) / 65536.0f;
                     tty = ty-1; // line above
                     tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
                     s[0] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
@@ -1117,9 +1113,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     x_frac_src = (int32_t)x_accum - 0x8000;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int tx = x_frac_src >> 16;
-                        dx = (x_frac_src & 0xffff) >> 1;
-                        dx2 = (dx * dx) >> 15;
-                        dx3 = (dx * dx2) >> 15;
+                        dx = (x_frac_src & 0xffff) / 65536.0f;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
                             ttx = tx - 1; // left of center
                             ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
@@ -1137,27 +1131,19 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                             d1 = pix1;
                             d2 = pix2;
                             d3 = pix3;
-//                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                            a2 = (-d0/2.0f) + d2/2.0f;
-//                            C[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
-                            a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                            a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                            a2 = (d2 - d0) >> 1;
-                            C[j] = d1 + (((a2 * dx) + (a1 * dx2) + (a0 * dx3)) >> 15);
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                         } // or j
                         d0 = C[0];
                         d1 = C[1];
                         d2 = C[2];
                         d3 = C[3];
-//                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                        a2 = (-d0/2.0f) + d2/2.0f;
-//                        pix0 = (int)(d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy);
-                        a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                        a1 = d0 + (2*d2) - (((5*d1) + d3)>>1); 
-                        a2 = (d2 - d0) >> 1;
-                        pix0 = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15); 
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        pix0 = (int)(d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy);
                         if (pix0 > 255) pix0 = 255;
                         else if (pix0 < 0) pix0 = 0;
                         IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, x, (uint8_t)pix0);
@@ -1171,19 +1157,15 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                 {
                     uint16_t *s[4]; // 4 rows
                     int32_t pix0,pix1,pix2,pix3; // 4 columns
-                    int32_t dx,dx2,dx3,dy,dy2,dy3,d0,d1,d2,d3,a0,a1,a2;
-//                    float dx, dy, d0,d1,d2,d3,a0,a1,a2;
-//                    float C_R[4], C_G[4], C_B[4];
-                    int32_t C_R[4], C_G[4], C_B[4];
+                    float dx, dy, d0,d1,d2,d3,a0,a1,a2;
+                    float C_R[4], C_G[4], C_B[4];
                     int old_y, Cr, Cg, Cb;
                     uint16_t *d = (uint16_t*)cache_line_top;
                     uint16_t *dest_row_ptr = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, y);
                     int32_t y_frac_src, x_frac_src, ty, tty;
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ty = y_frac_src >> 16;
-                    dy = (y_frac_src & 0xffff) >> 1;
-                    dy2 = (dy * dy) >> 15;
-                    dy3 = (dy * dy2) >> 15;
+                    dy = (y_frac_src & 0xffff) / 65536.0f;
                     tty = ty-1; // line above
                     old_y = tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
                     if (color_palette) { // convert through given palette
@@ -1234,9 +1216,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int32_t tx, ttx;
                         tx = x_frac_src >> 16;
-                        dx = (x_frac_src & 0xffff) >> 1;
-                        dx2 = (dx * dx) >> 15;
-                        dx3 = (dx * dx2) >> 15;
+                        dx = (x_frac_src & 0xffff) / 65536.0f;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
                             ttx = tx - 1; // left of center
                             ttx = (ttx < 0) ? 0 : (ttx >= src_img->w) ? (src_img->w -1): ttx;
@@ -1255,80 +1235,56 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                             d1 = (int)COLOR_RGB565_TO_R5(pix1);
                             d2 = (int)COLOR_RGB565_TO_R5(pix2);
                             d3 = (int)COLOR_RGB565_TO_R5(pix3);
-//                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f; 
-//                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                            a2 = (-d0/2.0f) + d2/2.0f;
-//                            C_R[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
-                            a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                            a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                            a2 = (d2 - d0) >> 1;
-                            C_R[j] = d1 + (((a2 * dx) + (a1 * dx2) + (a0 * dx3)) >> 15); 
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f; 
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C_R[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                             // Green
                             d0 = (int)COLOR_RGB565_TO_G6(pix0);
                             d1 = (int)COLOR_RGB565_TO_G6(pix1);
                             d2 = (int)COLOR_RGB565_TO_G6(pix2);
                             d3 = (int)COLOR_RGB565_TO_G6(pix3);
-//                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                            a2 = (-d0/2.0f) + d2/2.0f;
-//                            C_G[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
-                            a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                            a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                            a2 = (d2 - d0) >> 1;
-                            C_G[j] = d1 + (((a2 * dx) + (a1 * dx2) + (a0 * dx3)) >> 15); 
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C_G[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                             // Blue
                             d0 = (int)COLOR_RGB565_TO_B5(pix0);
                             d1 = (int)COLOR_RGB565_TO_B5(pix1);
                             d2 = (int)COLOR_RGB565_TO_B5(pix2);
                             d3 = (int)COLOR_RGB565_TO_B5(pix3);
-//                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                            a2 = (-d0/2.0f) + d2/2.0f;
-//                            C_B[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
-                            a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                            a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                            a2 = (d2 - d0) >> 1;
-                            C_B[j] = d1 + (((a2 * dx) + (a1 * dx2) + (a0 * dx3)) >> 15); 
+                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                            a2 = (-d0/2.0f) + d2/2.0f;
+                            C_B[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
                         } // for j
                         // output final pixel, R first
                         d0 = C_R[0];
                         d1 = C_R[1];
                         d2 = C_R[2];
                         d3 = C_R[3];
-//                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                        a2 = (-d0/2.0f) + d2/2.0f;
-//                        Cr = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
-                        a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                        a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                        a2 = (d2 - d0) >> 1;
-                        Cr = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15); 
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        Cr = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
 
                         d0 = C_G[0];
                         d1 = C_G[1];
                         d2 = C_G[2];
                         d3 = C_G[3];
-//                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                        a2 = (-d0/2.0f) + d2/2.0f;
-//                        Cg = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
-                        a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                        a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                        a2 = (d2 - d0) >> 1;
-                        Cg = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15); 
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        Cg = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
 
                         d0 = C_B[0];
                         d1 = C_B[1];
                         d2 = C_B[2];
                         d3 = C_B[3];
-//                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-//                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-//                        a2 = (-d0/2.0f) + d2/2.0f;
-//                        Cb = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
-                        a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
-                        a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
-                        a2 = (d2 - d0) >> 1;
-                        Cb = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15); 
+                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
+                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
+                        a2 = (-d0/2.0f) + d2/2.0f;
+                        Cb = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
                         if (Cr < 0) Cr = 0;
                         else if (Cr > COLOR_R5_MAX) Cr = COLOR_R5_MAX;
                         if (Cg < 0) Cg = 0;
