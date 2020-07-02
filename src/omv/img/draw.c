@@ -880,6 +880,8 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint8_t *d = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
                     uint32_t xsubfrac, ysubfrac;
                     int32_t ysrc, y_frac_src;
+                    const uint32_t one_minus = 256;
+                    const uint32_t half_frac = 128; // for rounding
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ysrc = y_frac_src >> 16;
                     // keep source pointer from going out of bounds
@@ -895,14 +897,14 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                         s2 = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ysrc+1);
                     }
                     ysubfrac = ((y_frac_src & 0xffff) >> 8);
-                    ysubfrac |= ((256 - ysubfrac) << 16);
+                    ysubfrac |= ((one_minus - ysubfrac) << 16);
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int32_t x_frac_src = (int32_t)x_accum - 0x8000;
                         int32_t x00 = (x_frac_src >> 16);
                         uint32_t pix00, pix10, pix01, pix11, pixTop, pixBot;
                         xsubfrac = (x_frac_src & 0xffff) >> 8; // x fractional part only
-                        xsubfrac |= ((256 - xsubfrac) << 16);
+                        xsubfrac |= ((one_minus - xsubfrac) << 16);
                         if (x00 >= src_img->w)
                             x00 = src_img->w-1;
                         if (x00 == src_img->w-1 || x00 < 0) { // keep it within source image bounds
@@ -913,9 +915,12 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                             pix00 = s1[x00]; pix10 = s1[x00+1];
                             pix01 = s2[x00]; pix11 = s2[x00+1]; // get 4 neighboring pixels
                         }
-                        pixTop = __SMUAD(xsubfrac, (pix00 << 16) | pix10) >> 8;
-                        pixBot = __SMUAD(xsubfrac, (pix01 << 16) | pix11) >> 8;
-                        pixTop = __SMUAD(ysubfrac, (pixTop << 16) | pixBot) >> 8;   
+                        // multiply and sum 2 pixels at a time with SMUAD
+                        // horizontal average the 2 pairs
+                        pixTop = (__SMUAD(xsubfrac, (pix00 << 16) | pix10) + half_frac) >> 8;
+                        pixBot = (__SMUAD(xsubfrac, (pix01 << 16) | pix11) + half_frac) >> 8;
+                        // vertical average the newly formed pair
+                        pixTop = (__SMUAD(ysubfrac, (pixTop << 16) | pixBot) + half_frac) >> 8;   
                         IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, x, (uint8_t)pixTop);
                         x_accum += x_frac;
                     } // for x
@@ -928,9 +933,8 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint16_t *s1, *s2;
                     uint16_t *dest_row_ptr = (uint16_t *)cache_line_top;
                     uint16_t *d = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, y);
-                    uint32_t xfrac_2,xsubfrac, yfrac_2, ysubfrac;
+                    uint32_t xsubfrac, ysubfrac; //, xfrac_2 ,yfrac_2;
                     int32_t y_frac_src, ysrc;
-                    uint32_t rb_mask = 0xf81f;
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ysrc = (y_frac_src >> 16);
                     // keep source pointer from going out of bounds
@@ -956,16 +960,17 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                             s2 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ysrc+1);
                         }
                     }
-                    ysubfrac = ((y_frac_src & 0xffff) >> 11); // use it as a 5-bit fraction
-                    yfrac_2 = ((32-ysubfrac)<<16) + ysubfrac;
+                    ysubfrac = (y_frac_src & 0xffff); // use it as a 16-bit fraction
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int32_t x_frac_src = (int32_t)x_accum - 0x8000;
                         int32_t x00 = (x_frac_src >> 16);
-                        uint32_t g00, g10, g01, g11, gTop, gBot, rbTop, rbBot; // green
-                        uint32_t rb00, rb10, rb01, rb11; // red+blue
-                        xsubfrac = (x_frac_src & 0xffff) >> 11; // x fractional part only
-                        xfrac_2 = ((32-xsubfrac)<<16) + xsubfrac;
+                        const uint32_t one_minus = 65536;
+                        const uint32_t half_frac = 32768; // for rounding
+                        uint32_t g00, g10, g01, g11, gTop, gBot; // green
+                        uint32_t r00, r10, r01, r11, rTop, rBot; // red
+                        uint32_t b00, b10, b01, b11, bTop, bBot; // blue
+                        xsubfrac = (x_frac_src & 0xffff); // x fractional part only
                         if (x00 >= src_img->w)
                             x00 = src_img->w-1;
                         if (x00 == src_img->w-1 || x00 < 0) { // keep it within source image bounds
@@ -980,23 +985,34 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                         g10 = __builtin_bswap16(g10);
                         g01 = __builtin_bswap16(g01);
                         g11 = __builtin_bswap16(g11);
-                        rb00 = g00 & rb_mask; rb10 = g10 & rb_mask;
-                        rb01 = g01 & rb_mask; rb11 = g11 & rb_mask;
-                        g00 &= ~rb_mask; g10 &= ~rb_mask;
-                        g01 &= ~rb_mask; g11 &= ~rb_mask;
-                        gTop = __SMUAD(xfrac_2, (g00 << 16) | g10) >> 5;
-                        gTop &= ~rb_mask;
-                        rbTop = (((32-xsubfrac) * rb00) + (xsubfrac * rb10)) >> 5;
-                        rbTop &= rb_mask;
-                        gBot = __SMUAD(xfrac_2, (g01 << 16) | g11) >> 5;
-                        gBot &= ~rb_mask;
-                        rbBot = (((32-xsubfrac) * rb01) + (xsubfrac * rb11)) >> 5;
-                        rbBot &= rb_mask;
-                        gTop = __SMUAD(yfrac_2, (gTop << 16) | gBot) >> 5;
-                        gTop &= ~rb_mask;
-                        rbTop = (((32-ysubfrac) * rbTop) + (ysubfrac * rbBot)) >> 5;
-                        rbTop &= rb_mask;
-                        gTop = __builtin_bswap16(rbTop | gTop);
+                        r00 = (g00 & 0xf800) >> 8; r10 = (g10 & 0xf800) >> 8;
+                        r01 = (g01 & 0xf800) >> 8; r11 = (g11 & 0xf800) >> 8;
+                        b00 = g00 & 0x1f; b10 = g10 & 0x1f;
+                        b01 = g01 & 0x1f; b11 = g11 & 0x1f;
+                        g00 = g00 & 0x7e0; g10 = g10 & 0x7e0;
+                        g01 = g01 & 0x7e0; g11 = g11 & 0x7e0;
+                        // interpolate the 2 pairs of pixels horizontally
+                        gTop = (((one_minus-xsubfrac) * g00) + (xsubfrac * g10) + half_frac) >> 16;
+                        gTop &= 0x7e0;
+                        rTop = (((one_minus-xsubfrac) * r00) + (xsubfrac * r10) + half_frac) >> 16;
+                        rTop &= 0xf8;
+                        bTop = (((one_minus-xsubfrac) * b00) + (xsubfrac * b10) + half_frac) >> 16;
+                        bTop &= 0x1f;
+                        gBot = (((one_minus-xsubfrac) * g01) + (xsubfrac * g11) + half_frac) >> 16;
+                        gBot &= 0x7e0;
+                        rBot = (((one_minus-xsubfrac) * r01) + (xsubfrac * r11) + half_frac) >> 16;
+                        rBot &= 0xf8;
+                        bBot = (((one_minus-xsubfrac) * b01) + (xsubfrac * b11) + half_frac) >> 16;
+                        bBot &= 0x1f;
+                        // interpolate the newly formed pair vertically
+                        gTop = (((one_minus-ysubfrac) * gTop) + (ysubfrac * gBot) + half_frac) >> 16;
+                        gTop &= 0x7e0;
+                        rTop = ((((one_minus-ysubfrac) * rTop) + (ysubfrac * rBot)) + half_frac) >> 16;
+                        rTop &= 0xf8;
+                        bTop = ((((one_minus-ysubfrac) * bTop) + (ysubfrac * bBot)) + half_frac) >> 16;
+                        bTop &= 0x1f;
+                        // combine R/G/B into RGB565 and byte swap
+                        gTop = __builtin_bswap16((rTop<<8) | gTop | bTop);
                         IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, x, gTop);
                         x_accum += x_frac;
                     } // for x
