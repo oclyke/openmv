@@ -778,6 +778,12 @@ void imlib_fast_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start
 {
 int src_x_start, src_y_start, dest_x_end, dest_y_end;
 uint32_t x_accum, y_accum; // fixed point fraction vars
+// For all of the scaling (nearest neighbor, bilinear and bicubic) we use a
+// 16-bit fraction instead of a floating point value. Below, we calculate an
+// increment which fits in 16-bits. We can then add this value successively as
+// we loop over the destination pixels and then shift this sum right by 16
+// to get the corresponding source pixel
+// top 16-bits = whole part, bottom 16-bits = fractional part
 uint32_t x_frac = (uint32_t)(65536.0f / x_scale); // source increment
 uint32_t y_frac = (uint32_t)(65536.0f / y_scale);
 int bytes_per_img_line = dest_img->w * sizeof(uint8_t) * 2; // (1 byte grayscale + 1 byte alpha) = * 2
@@ -827,10 +833,8 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
         for (int y = dest_y_start; y < dest_y_end; y++) {
             if (y & 1) {
                 cache_line_top = cache_line_2;
-//                cache_line_bottom = cache_line_1;
             } else {
                 cache_line_top = cache_line_1;
-//                cache_line_bottom = cache_line_2;
             }
             switch (bpp) {
                 case IMAGE_BPP_BINARY:
@@ -878,7 +882,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint8_t *s1, *s2;
                     uint8_t *dest_row_ptr = cache_line_top;
                     uint8_t *d = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
-                    uint32_t xsubfrac, ysubfrac;
+                    uint32_t x_frac_src, xsubfrac, ysubfrac;
                     int32_t ysrc, y_frac_src;
                     const uint32_t one_minus = 256;
                     const uint32_t half_frac = 128; // for rounding
@@ -900,7 +904,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     ysubfrac |= ((one_minus - ysubfrac) << 16);
                     x_accum = src_x_start << 16;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int32_t x_frac_src = (int32_t)x_accum - 0x8000;
+                        x_frac_src = (int32_t)x_accum - 0x8000;
                         int32_t x00 = (x_frac_src >> 16);
                         uint32_t pix00, pix10, pix01, pix11, pixTop, pixBot;
                         xsubfrac = (x_frac_src & 0xffff) >> 8; // x fractional part only
@@ -1024,7 +1028,25 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
         y_accum += y_frac;
         } // for y
     } else if (hint & IMAGE_HINT_BICUBIC) {
-        // Work from destination back to source
+        // Impliments the traditional bicubic interpolation algorithm which uses
+        // a 4x4 filter block with the current pixel centered at (1,1) (C below).
+        // However, instead of floating point math, it uses integer (fixed point).
+        // The Cortex-M4/M7 has a hardware floating point unit, so doing FP math
+        // doesn't take any extra time, but it does take extra time to convert
+        // the integer pixels to floating point and back to integers again.
+        // So this allows it to execute more quickly in pure integer math.
+        //
+        // +---+---+---+---+
+        // | x | x | x | x |
+        // +---+---+---+---+
+        // | x | C | x | x |
+        // +---+---+---+---+
+        // | x | x | x | x |
+        // +---+---+---+---+
+        // | x | x | x | x |
+        // +---+---+---+---+
+        //
+        // Work from destination pixels back to source pixels
         for (int y = dest_y_start; y < dest_y_end; y++) {
             if (y & 1) {
                 cache_line_top = cache_line_2;
@@ -1037,12 +1059,17 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint32_t *s[4]; // 4 rows
                     // the pixels need to be signed integers for the BICUBIC calc
                     int pix0,pix1,pix2,pix3; // 4 columns
-                    float dx, dy, d0,d1,d2,d3,a0,a1,a2,C[4], Cc;
+                    int32_t dx, dx2, dx3, dy, dy2, dy3;
+                    int32_t d0,d1,d2,d3,a0,a1,a2,C[4], Cc;
                     uint32_t *d = (uint32_t *)cache_line_top;
                     uint32_t *dest_row_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, y);
-                    int32_t y_frac_src = (int32_t)y_accum - 0x8000;
+                    // pixel is centered at (-0.5,-0.5) otherwise the image shifts
+                    int32_t x_frac_src, y_frac_src = (int32_t)y_accum - 0x8000;
                     int32_t tty, ty = y_frac_src >> 16;
-                    dy = (y_frac_src & 0xffff) / 65536.0f;
+                    dy = (y_frac_src & 0xffff) >> 1;
+                    // pre-calculate the ^2 and ^3 of the fraction
+                    dy2 = (dy * dy) >> 15;
+                    dy3 = (dy2 * dy) >> 15;
                     tty = ty-1; // line above
                     tty = (tty < 0) ? 0 : (tty >= src_img->h) ? (src_img->h -1): tty;
                     s[0] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
@@ -1057,9 +1084,14 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     s[3] = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, tty);
 
                     x_accum = src_x_start << 16;
+                    x_frac_src = (int32_t)x_accum - 0x8000;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
-                        int tx = x_accum >> 16;
-                        dx = (x_accum & 0xffff) / 65536.0f;
+                        int tx = x_frac_src >> 16;
+                        // Create a 15-bit fraction so the square fits in a int32_t
+                        dx = (x_frac_src & 0xffff) >> 1;
+                        // pre-calculate the ^2 and ^3 of the fraction
+                        dx2 = (dx * dx) >> 15;
+                        dx3 = (dx2 * dx) >> 15;
                         if (tx >= src_img->w) tx = src_img->w-1;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
                             if (tx > 0) {
@@ -1077,24 +1109,24 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                                 else
                                     pix3 = (int)IMAGE_GET_BINARY_PIXEL_FAST(s[j], tx+2);
                             }
-                            d0 = pix0;
-                            d1 = pix1;
-                            d2 = pix2;
-                            d3 = pix3;
-                            a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-                            a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-                            a2 = (-d0/2.0f) + d2/2.0f;
-                            C[j] = d1 + a2*dx + a1*dx*dx + a0*dx*dx*dx;
-                        } // or j
+                            d0 = pix0 << 8; // provide more resolution
+                            d1 = pix1 << 8; // to the bicubic formula
+                            d2 = pix2 << 8;
+                            d3 = pix3 << 8;
+                            a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
+                            a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
+                            a2 = (d2 - d0) >> 1;
+                            C[j] = d1 + (((a2 * dx) + (a1 * dx2) + (a0 * dx3)) >> 15);
+                        } // for j
                         d0 = C[0];
                         d1 = C[1];
                         d2 = C[2];
                         d3 = C[3];
-                        a0 = (-d0/2.0f) + (3.0f*d1)/2.0f - (3.0f*d2)/2.0f + d3/2.0f;
-                        a1 =  d0 - (5.0f*d1)/2.0f + 2.0f*d2 - d3/2.0f;
-                        a2 = (-d0/2.0f) + d2/2.0f;
-                        Cc = d1 + a2*dy + a1*dy*dy + a0*dy*dy*dy;
-                        IMAGE_PUT_BINARY_PIXEL_FAST(d, x, (Cc >= 0.5f));
+                        a0 = ((d1 * 3) - (d2 * 3) - d0 + d3) >> 1;
+                        a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
+                        a2 = (d2 - d0) >> 1;
+                        Cc = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15);
+                        IMAGE_PUT_BINARY_PIXEL_FAST(d, x, (Cc >= 128));
                         x_accum += x_frac;
                     } // for x
                     imlib_combine_alpha(alpha, alpha_palette, cache_line_top, (uint8_t *)dest_row_ptr, dest_x_start, dest_x_end, dest_img->bpp);
@@ -1111,10 +1143,12 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     uint8_t *d = cache_line_top;
                     uint8_t *dest_row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, y);
                     int32_t y_frac_src, x_frac_src, ty, tty, ttx;
+                    // pixel is centered at (-0.5,-0.5) otherwise the image shifts
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ty = y_frac_src >> 16;
                     // 15-bit fraction to fit a square of it in 32-bits
                     dy = (y_frac_src & 0xffff) >> 1;
+                    // pre-calculate the ^2 and ^3 of the fraction
                     dy2 = (dy * dy) >> 15;
                     dy3 = (dy2 * dy) >> 15;
                     tty = ty-1; // line above
@@ -1130,10 +1164,12 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     tty = (tty >= src_img->h) ? (src_img->h -1): tty;
                     s[3] = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, tty);
                     x_accum = src_x_start << 16;
+                    // pixel is centered at (-0.5,-0.5) otherwise the image shifts
                     x_frac_src = (int32_t)x_accum - 0x8000;
                     for (int x = dest_x_start; x < dest_x_end; x++) {
                         int tx = x_frac_src >> 16;
                         dx = (x_frac_src & 0xffff)  >> 1;
+                        // pre-calculate the ^2 and ^3 of the fraction
                         dx2 = (dx * dx) >> 15;
                         dx3 = (dx2 * dx) >> 15;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
@@ -1185,6 +1221,10 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
 
                 case IMAGE_BPP_RGB565:
                 {
+                    // To make best use of the resolution of the pixel colors
+                    // we need to shift them left a few places to keep them from
+                    // 'falling through the cracks' when divided.
+                    // We also can't bump up against the max size of significant bits
                     uint16_t *s[4]; // 4 rows
                     int32_t pix0,pix1,pix2,pix3; // 4 columns
                     int32_t dx,dx2,dx3,dy,dy2,dy3;
@@ -1197,6 +1237,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                     y_frac_src = (int32_t)y_accum - 0x8000;
                     ty = y_frac_src >> 16;
                     dy = (y_frac_src & 0xffff) >> 1;
+                    // pre-calculate the ^2 and ^3 of the fraction
                     dy2 = (dy * dy) >> 15;
                     dy3 = (dy2 * dy) >> 15;
                     tty = ty-1; // line above
@@ -1250,6 +1291,7 @@ int bpp = (color_palette) ? IMAGE_BPP_RGB565 : src_img->bpp;
                         int32_t tx, ttx;
                         tx = x_frac_src >> 16;
                         dx = (x_frac_src & 0xffff) >> 1;
+                        // pre-calculate the ^2 and ^3 of the fraction
                         dx2 = (dx * dx) >> 15;
                         dx3 = (dx2 * dx) >> 15;
                         for (int j = 0; j < 4; j++) { // bicubic y step (-1 to +2)
