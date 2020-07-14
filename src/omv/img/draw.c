@@ -571,7 +571,7 @@ inline bool pixel_to_binary(int bpp, uint32_t pixel) {
 // Combine 2 image lines using an alpha value (0 = keep destination, 256 = use 100% of source)
 // the source and destination bpp must be the same
 //
-void imlib_combine_alpha(int alpha, const uint8_t *alpha_palette, uint8_t *src, int dest_y, int x_start, int x_end, int src_bpp, image_t *dest_img, int bFlipX)
+void imlib_combine_alpha(int alpha, const uint8_t *alpha_palette, uint8_t *src, int dest_y, int x_start, int x_end, int src_bpp, image_t *dest_img)
 {
 uint32_t packed_alpha = (alpha << 16) | (256 - alpha);
 int dest_bpp = dest_img->bpp;
@@ -639,45 +639,23 @@ int dest_bpp = dest_img->bpp;
                 case IMAGE_BPP_BINARY:
                 {
                     uint32_t *dest = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, dest_y);
-                    if (bFlipX) { // reverse the order
-                        int dx = x_end-1;
-                        for (int x=x_start; x<x_end; x++, dx--) {
-                            uint32_t pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t*)src, x);
-                            IMAGE_PUT_BINARY_PIXEL_FAST(dest, dx, pixel);
-                        }
-                    } else {
-                        for (int x=x_start; x<x_end; x++) {
-                            uint32_t pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t*)src, x);
-                            IMAGE_PUT_BINARY_PIXEL_FAST(dest, x, pixel);
-                        }
+                    for (int x=x_start; x<x_end; x++) {
+                        uint32_t pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t*)src, x);
+                        IMAGE_PUT_BINARY_PIXEL_FAST(dest, x, pixel);
                     }
                 }
                     break;
                 case IMAGE_BPP_GRAYSCALE:
                 {
                     uint8_t *dest = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, dest_y);
-                    if (bFlipX) { // reverse order
-                        int dx = x_end-1;
-                        for (int x=x_start; x<x_end; x++, dx--) {
-                            dest[dx] = src[x];
-                        }
-                    } else {
-                        memcpy(&dest[x_start], &src[x_start], (x_end - x_start + 1));
-                    }
+                    memcpy(&dest[x_start], &src[x_start], (x_end - x_start));
                 }
                     break;
                 case IMAGE_BPP_RGB565:
                 {
                     uint16_t *dest = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, dest_y);
-                    if (bFlipX) { // reverse order
-                        int dx = x_end-1;
-                        uint16_t *s = (uint16_t *)src;
-                        for (int x=x_start; x<x_end; x++, dx--) {
-                            dest[dx] = s[x];
-                        }
-                    } else {
-                    memcpy(&dest[x_start], &src[x_start], (x_end - x_start + 1) * 2);
-                    }
+                    uint16_t *s = (uint16_t *)src;
+                    memcpy(&dest[x_start], &s[x_start], (x_end - x_start) * 2);
                 }
                     break;
             }
@@ -689,17 +667,9 @@ int dest_bpp = dest_img->bpp;
         case IMAGE_BPP_BINARY: // opaque = copy (no real blending occurring)
         {
             uint32_t pixel, *dest = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, dest_y);
-            if (bFlipX) { // reverse order
-                int dx = x_end-1;
-                for (int x=x_start; x<x_end; x++, dx--) {
-                    pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t *)src, x);
-                    IMAGE_PUT_BINARY_PIXEL_FAST(dest, dx, pixel);
-                }
-            } else {
-                for (int x = x_start; x < x_end; x++) {
-                    pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t *)src, x);
-                    IMAGE_PUT_BINARY_PIXEL_FAST(dest, x, pixel);
-                }
+            for (int x = x_start; x < x_end; x++) {
+                pixel = IMAGE_GET_BINARY_PIXEL_FAST((uint32_t *)src, x);
+                IMAGE_PUT_BINARY_PIXEL_FAST(dest, x, pixel);
             }
         }
         break; // binary
@@ -709,20 +679,15 @@ int dest_bpp = dest_img->bpp;
             uint8_t *dest_gray = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(dest_img, dest_y);
             uint16_t *dest_rgb565 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, dest_y);
             uint32_t *dest_binary = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, dest_y);
-            int dx = x_start, delta = 1;
-            if (bFlipX) {
-                dx = x_end-1;
-                delta = -1;
-            }
-            for (int x = x_start; x < x_end; x++, dx += delta) {
-                uint32_t pixel = ((uint32_t)src[x] << 16) | dest_gray[dx];
+            for (int x = x_start; x < x_end; x++) {
+                uint32_t pixel = ((uint32_t)src[x] << 16) | dest_gray[x];
                 uint8_t u8Pixel = __SMUAD(packed_alpha, pixel) >> 8;
                 if (dest_bpp == IMAGE_BPP_GRAYSCALE)
-                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_gray, dx, u8Pixel);
+                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_gray, x, u8Pixel);
                 else if (dest_bpp == IMAGE_BPP_RGB565)
-                    IMAGE_PUT_RGB565_PIXEL_FAST(dest_rgb565, dx, COLOR_GRAYSCALE_TO_RGB565(u8Pixel));
+                    IMAGE_PUT_RGB565_PIXEL_FAST(dest_rgb565, x, COLOR_GRAYSCALE_TO_RGB565(u8Pixel));
                 else
-                    IMAGE_PUT_BINARY_PIXEL_FAST(dest_binary, dx, COLOR_GRAYSCALE_TO_BINARY(u8Pixel));
+                    IMAGE_PUT_BINARY_PIXEL_FAST(dest_binary, x, COLOR_GRAYSCALE_TO_BINARY(u8Pixel));
             } // for x
         }
         break; // grayscale
@@ -736,17 +701,12 @@ int dest_bpp = dest_img->bpp;
             uint16_t *dest_rgb565 = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(dest_img, dest_y);
             uint32_t *dest_binary = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(dest_img, dest_y);
             uint16_t u16Pixel;
-            int dx = x_start, delta = 1;
-            if (bFlipX) {
-                dx = x_end-1;
-                delta = -1;
-            }
             alpha >>= 3; // use a 5-bit alpha
             not_alpha = 32-alpha;
             rb_mask = 0xf81f; // split RGB565 into R_B and _G_
-            for (int x = x_start; x < x_end; x++, dx += delta) {
+            for (int x = x_start; x < x_end; x++) {
                 src_pixel = s[x];
-                dest_pixel = dest_rgb565[dx];
+                dest_pixel = dest_rgb565[x];
                 src_pixel = __builtin_bswap16(src_pixel); // swap byte order
                 dest_pixel = __builtin_bswap16(dest_pixel);
                 rb_src = src_pixel & rb_mask;
@@ -759,11 +719,11 @@ int dest_bpp = dest_img->bpp;
                 g_src &= ~rb_mask;
                 u16Pixel = __builtin_bswap16(rb_src | g_src);
                 if (dest_bpp == IMAGE_BPP_RGB565)
-                    IMAGE_PUT_RGB565_PIXEL_FAST(dest_rgb565, dx, u16Pixel);
+                    IMAGE_PUT_RGB565_PIXEL_FAST(dest_rgb565, x, u16Pixel);
                 else if (dest_bpp == IMAGE_BPP_GRAYSCALE)
-                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_gray, dx, COLOR_RGB565_TO_GRAYSCALE(u16Pixel));
+                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_gray, x, COLOR_RGB565_TO_GRAYSCALE(u16Pixel));
                 else
-                    IMAGE_PUT_BINARY_PIXEL_FAST(dest_binary, dx, COLOR_RGB565_TO_BINARY(u16Pixel));
+                    IMAGE_PUT_BINARY_PIXEL_FAST(dest_binary, x, COLOR_RGB565_TO_BINARY(u16Pixel));
             } // for x
         }
         break; // RGB565    
@@ -836,8 +796,8 @@ void draw_palette_rgb565(uint8_t *pDest, image_t *src_img, int y, const uint16_t
  */
 void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int dest_y_start, float x_scale, float y_scale, int alpha, image_t *mask, const uint16_t *color_palette, const uint8_t *alpha_palette, image_hint_t hint)
 {
-    int src_x_start, src_y_start, dest_x_end, dest_y_end, dest_y, delta_y;
-    int bFlipX, bFlipY;
+    int src_x_start, src_y_start, dest_x_end, dest_y_end, dest_x, dest_y;
+    int bFlipX, bFlipY, delta_x, delta_y;
     uint32_t x_accum, y_accum; // fixed point fraction vars
     // For all of the scaling (nearest neighbor, bilinear and bicubic) we use a
     // 16-bit fraction instead of a floating point value. Below, we calculate an
@@ -846,12 +806,15 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
     // to get the corresponding source pixel
     // top 16-bits = whole part, bottom 16-bits = fractional part
     bFlipX = bFlipY = 0;
+    delta_x = delta_y = 1; // positive direction
     if (x_scale < 0.0f) { // flip X
         bFlipX = 1;
+        delta_x = -1;
         x_scale = -x_scale;
     }
     if (y_scale < 0.0f) { // flip Y
         bFlipY = 1;
+        delta_y = -1;
         y_scale = -y_scale;
     }
     uint32_t x_frac = (uint32_t)(65536.0f / x_scale); // source increment
@@ -906,10 +869,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
     cache_convert_4 = fb_alloc(bytes_per_img_line, FB_ALLOC_NO_HINT);
     y_accum = src_y_start << 16;
     dest_y = dest_y_start;
-    delta_y = 1; // positive direction
     if (bFlipY) {
         dest_y = dest_y_end-1; // start from bottom
-        delta_y = -1;
     }
         if (hint & IMAGE_HINT_BILINEAR) {
             // Work from destination back to source
@@ -938,7 +899,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                         if (ysubfrac >= 0x8000) // lower line takes priority
                            s1 = s2;
                         x_accum = src_x_start << 16;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int x00 = x_accum >> 16;
                             uint32_t pixel;
                             xsubfrac = x_accum & 0xffff; // x fractional part only
@@ -952,10 +914,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                                 else
                                     pixel = IMAGE_GET_BINARY_PIXEL_FAST(s1, x00);
                             }
-                            IMAGE_PUT_BINARY_PIXEL_FAST(d, x, pixel);
+                            IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
 
@@ -984,7 +946,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                         ysubfrac |= ((one_minus - ysubfrac) << 16);
                         x_accum = src_x_start << 16;
                         x_frac_src = (int32_t)x_accum - 0x8000;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int32_t x00 = (x_frac_src >> 16);
                             uint32_t pix00, pix10, pix01, pix11, pixTop, pixBot;
                             xsubfrac = (x_frac_src & 0xffff) >> 8; // x fractional part only
@@ -1005,10 +968,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             pixBot = (__SMUAD(xsubfrac, (pix01 << 16) | pix11) + half_frac) >> 8;
                             // vertical average the newly formed pair
                             pixTop = (__SMUAD(ysubfrac, (pixTop << 16) | pixBot) + half_frac) >> 8;
-                            IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, x, (uint8_t)pixTop);
+                            IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, dest_x, (uint8_t)pixTop);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
 
@@ -1045,7 +1008,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                         }
                         ysubfrac = (y_frac_src & 0xffff); // use it as a 16-bit fraction
                         x_accum = src_x_start << 16;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int32_t x_frac_src = (int32_t)x_accum - 0x8000;
                             int32_t x00 = (x_frac_src >> 16);
                             const uint32_t one_minus = 65536;
@@ -1096,10 +1060,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             bTop &= 0x1f;
                             // combine R/G/B into RGB565 and byte swap
                             gTop = __builtin_bswap16((rTop<<8) | gTop | bTop);
-                            IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, x, gTop);
+                            IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, dest_x, gTop);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
 
@@ -1163,7 +1127,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
 
                         x_accum = src_x_start << 16;
                         x_frac_src = (int32_t)x_accum - 0x8000;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int tx = x_frac_src >> 16;
                             // Create a 15-bit fraction so the square fits in a int32_t
                             dx = (x_frac_src & 0xffff) >> 1;
@@ -1204,10 +1169,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             a1 = d0 + (2*d2) - (((5*d1) + d3)>>1);
                             a2 = (d2 - d0) >> 1;
                             Cc = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15);
-                            IMAGE_PUT_BINARY_PIXEL_FAST(d, x, (Cc >= 128));
+                            IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, (Cc >= 128));
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
 
@@ -1243,7 +1208,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                         x_accum = src_x_start << 16;
                         // pixel is centered at (-0.5,-0.5) otherwise the image shifts
                         x_frac_src = (int32_t)x_accum - 0x8000;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int tx = x_frac_src >> 16;
                             dx = (x_frac_src & 0xffff)  >> 1;
                             // pre-calculate the ^2 and ^3 of the fraction
@@ -1289,10 +1255,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             pix0 = d1 + (((a2 * dy) + (a1 * dy2) + (a0 * dy3)) >> 15);
                             if (pix0 < 0) pix0 = 0;
                             pix0 >>= 4; // reduce to original resolution
-                            IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, x, (uint8_t)pix0);
+                            IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, dest_x, (uint8_t)pix0);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
 
@@ -1363,7 +1329,8 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             s[3] = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, tty);
                         }
                         x_frac_src = (src_x_start << 16) - 0x8000;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             int32_t tx, ttx;
                             tx = x_frac_src >> 16;
                             dx = (x_frac_src & 0xffff) >> 1;
@@ -1458,10 +1425,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                                 if (Cb > COLOR_B5_MAX) Cb = COLOR_B5_MAX;
                             }
                             pix0 = COLOR_R5_G6_B5_TO_RGB565((uint8_t)Cr, (uint8_t)Cg, (uint8_t)Cb);
-                            IMAGE_PUT_RGB565_PIXEL_FAST(d, x, pix0);
+                            IMAGE_PUT_RGB565_PIXEL_FAST(d, dest_x, pix0);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break;
                 } // switch on bpp
@@ -1481,12 +1448,13 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                         uint32_t *src_row_ptr = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, y_accum >> 16);
                         uint32_t *d = (uint32_t *)cache_line_top;
                         x_accum = src_x_start << 16;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             uint32_t pixel = IMAGE_GET_BINARY_PIXEL_FAST(src_row_ptr, x_accum >> 16);
-                            IMAGE_PUT_BINARY_PIXEL_FAST(d, x, pixel);
+                            IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break; // BINARY
 
@@ -1495,12 +1463,13 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                        uint8_t *src_row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, y_accum >> 16);
                        uint8_t *dest_row_ptr = cache_line_top;
                         x_accum = src_x_start << 16;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             uint8_t pixel = IMAGE_GET_GRAYSCALE_PIXEL_FAST(src_row_ptr, x_accum >> 16);
                             IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break; // GRAYSCALE
 
@@ -1513,12 +1482,13 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             draw_palette_rgb565(cache_convert_1, src_img, y_accum >> 16, color_palette);
                         }
                         x_accum = src_x_start << 16;
-                        for (int x = dest_x_start; x < dest_x_end; x++) {
+                        dest_x = (bFlipX) ? dest_x_end-1 : dest_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
                             uint16_t pixel = IMAGE_GET_RGB565_PIXEL_FAST(src_row_ptr, x_accum >> 16);
-                            IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, x, pixel);
+                            IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img, bFlipX);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
                     }
                     break; // RGB565
                 } // switch on pixel type
