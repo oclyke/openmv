@@ -7649,6 +7649,7 @@ static const mp_rom_map_elem_t globals_dict_table[] = {
 #endif
     {MP_ROM_QSTR(MP_QSTR_IMAGE_HINT_BILINEAR),MP_ROM_INT(IMAGE_HINT_BILINEAR)},
     {MP_ROM_QSTR(MP_QSTR_IMAGE_HINT_BICUBIC),MP_ROM_INT(IMAGE_HINT_BICUBIC)},
+    {MP_ROM_QSTR(MP_QSTR_IMAGE_HINT_AREA),MP_ROM_INT(IMAGE_HINT_AREA)},
     {MP_ROM_QSTR(MP_QSTR_IMAGE_HINT_CENTER),        MP_ROM_INT(IMAGE_HINT_CENTER)},
     {MP_ROM_QSTR(MP_QSTR_ImageWriter),         MP_ROM_PTR(&py_image_imagewriter_obj)},
     {MP_ROM_QSTR(MP_QSTR_ImageReader),         MP_ROM_PTR(&py_image_imagereader_obj)},

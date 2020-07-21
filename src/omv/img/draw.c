@@ -797,7 +797,7 @@ void draw_palette_rgb565(uint8_t *pDest, image_t *src_img, int y, const uint16_t
 void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int dest_y_start, float x_scale, float y_scale, int alpha, image_t *mask, const uint16_t *color_palette, const uint8_t *alpha_palette, image_hint_t hint)
 {
     int src_x_start, src_y_start, dest_x_end, dest_y_end, dest_x, dest_y;
-    int bFlipX, bFlipY, delta_x, delta_y;
+    int bFlipX, bFlipY, delta_x, delta_y, downscale_x, downscale_y;
     uint32_t x_accum, y_accum; // fixed point fraction vars
     // For all of the scaling (nearest neighbor, bilinear and bicubic) we use a
     // 16-bit fraction instead of a floating point value. Below, we calculate an
@@ -872,6 +872,127 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
     if (bFlipY) {
         dest_y = dest_y_end-1; // start from bottom
     }
+    //
+    // For shrinking an image, we use the 'area' method of averaging the pixels
+    // Right now this only supports integer scaling options of exactly 1/2, 1/3, etc
+    //
+    if (x_scale < 1.0 || y_scale < 1.0)
+    {
+        float xFlip = 1/x_scale, yFlip = 1/y_scale;
+        int acc, tx, ty, cx, cy, xsrc, ysrc;
+        
+        if (abs(xFlip - (int)xFlip) > (xFlip/100) || abs(yFlip - (int)yFlip) > (yFlip/100)) { // not integer scale factors
+            return;
+        }
+        downscale_x = (int)(1/x_scale);
+        downscale_y = (int)(1/y_scale);
+        ysrc = src_y_start;
+        for (int y = dest_y_start; y < dest_y_end; y++, dest_y += delta_y) {
+            if (y & 1) {
+                cache_line_top = cache_line_2;
+            } else {
+                cache_line_top = cache_line_1;
+            }
+            switch (bpp) {
+                case IMAGE_BPP_BINARY:
+                    {
+                        uint32_t *s;
+                        uint32_t *d = (uint32_t *)cache_line_top;
+                        cy = downscale_y;
+                        if (ysrc + cy > src_img->h) // beyond bottom
+                            cy = src_img->h - ysrc;
+                        dest_x = dest_x_start;
+                        if (bFlipX) {
+                            dest_x = dest_x_end-1; // start from right
+                        }
+                        xsrc = src_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
+                            cx = downscale_x;
+                            if (xsrc + cx > src_img->w)
+                                cx = src_img->w - xsrc;
+                            acc = 0;
+                            for (ty=ysrc; ty < ysrc+cy; ty++) { // inner accumulation loop
+                                s = IMAGE_COMPUTE_BINARY_PIXEL_ROW_PTR(src_img, ty);
+                                for (tx=xsrc; tx<xsrc+cx; tx++) {
+                                    acc += IMAGE_GET_BINARY_PIXEL_FAST(s, tx);
+                                } // for tx
+                            } // for ty
+                            IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, dest_x, acc >= ((cx * cy)/2));
+                            xsrc += downscale_x;
+                        } // for x
+                    }
+                    break;
+                case IMAGE_BPP_GRAYSCALE:
+                {
+                    uint8_t *s;
+                    uint8_t *d = cache_line_top;
+                    cy = downscale_y;
+                    if (ysrc + cy > src_img->h) // beyond bottom
+                        cy = src_img->h - ysrc;
+                    dest_x = dest_x_start;
+                    if (bFlipX) {
+                        dest_x = dest_x_end-1; // start from right
+                    }
+                    xsrc = src_x_start;
+                    for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
+                        cx = downscale_x;
+                        if (xsrc + cx > src_img->w)
+                            cx = src_img->w - xsrc;
+                        acc = 0;
+                        for (ty=ysrc; ty < ysrc+cy; ty++) { // inner accumulation loop
+                            s = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(src_img, ty);
+                            for (tx=xsrc; tx<xsrc+cx; tx++) {
+                                acc += IMAGE_GET_GRAYSCALE_PIXEL_FAST(s, tx);
+                            } // for tx
+                        } // for ty
+                        acc = (acc + (cx * cy)/2) / (cx * cy); // average the pixels
+                        IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, dest_x, (uint8_t)acc);
+                        xsrc += downscale_x;
+                    } // for x
+                }
+                    break;
+                case IMAGE_BPP_RGB565:
+                    {
+                        uint16_t *s, pix;
+                        int acc_r, acc_g, acc_b;
+                        uint16_t *d = (uint16_t *)cache_line_top;
+                        cy = downscale_y;
+                        if (ysrc + cy > src_img->h) // beyond bottom
+                            cy = src_img->h - ysrc;
+                        dest_x = dest_x_start;
+                        if (bFlipX) {
+                            dest_x = dest_x_end-1; // start from right
+                        }
+                        xsrc = src_x_start;
+                        for (int x = dest_x_start; x < dest_x_end; x++, dest_x += delta_x) {
+                            cx = downscale_x;
+                            if (xsrc + cx > src_img->w)
+                                cx = src_img->w - xsrc;
+                            acc_r = acc_g = acc_b = 0;
+                            for (ty=ysrc; ty < ysrc+cy; ty++) { // inner accumulation loop
+                                s = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(src_img, ty);
+                                for (tx=xsrc; tx<xsrc+cx; tx++) {
+                                    pix = IMAGE_GET_RGB565_PIXEL_FAST(s, tx);
+                                    acc_r += COLOR_RGB565_TO_R5(pix);
+                                    acc_g += COLOR_RGB565_TO_G6(pix);
+                                    acc_b += COLOR_RGB565_TO_B5(pix);
+                                } // for tx
+                            } // for ty
+                            acc_r = (acc_r + (cx * cy)/2) / (cx * cy); // average the pixels
+                            acc_g = (acc_g + (cx * cy)/2) / (cx * cy);
+                            acc_b = (acc_b + (cx * cy)/2) / (cx * cy);
+                            IMAGE_PUT_RGB565_PIXEL_FAST(d, dest_x, COLOR_R5_G6_B5_TO_RGB565(acc_r, acc_g, acc_b));
+                            xsrc += downscale_x;
+                        } // for x
+                    }
+                    break;
+            } // switch on bpp
+            imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
+            ysrc += downscale_y;
+        } // for y
+        fb_alloc_free_till_mark();
+        return; // done with area scaling
+    }
         if (hint & IMAGE_HINT_BILINEAR) {
             // Work from destination back to source
             for (int y = dest_y_start; y < dest_y_end; y++, dest_y += delta_y) {
@@ -917,7 +1038,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
 
@@ -971,7 +1092,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, dest_x, (uint8_t)pixTop);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
 
@@ -1063,7 +1184,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, dest_x, gTop);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
 
@@ -1172,7 +1293,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, (Cc >= 128));
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
 
@@ -1258,7 +1379,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_GRAYSCALE_PIXEL_FAST(d, dest_x, (uint8_t)pix0);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
 
@@ -1428,7 +1549,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_RGB565_PIXEL_FAST(d, dest_x, pix0);
                             x_frac_src += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break;
                 } // switch on bpp
@@ -1454,7 +1575,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_BINARY_PIXEL_FAST(d, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break; // BINARY
 
@@ -1469,7 +1590,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_GRAYSCALE_PIXEL_FAST(dest_row_ptr, x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break; // GRAYSCALE
 
@@ -1488,7 +1609,7 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
                             IMAGE_PUT_RGB565_PIXEL_FAST(dest_row_ptr, dest_x, pixel);
                             x_accum += x_frac;
                         } // for x
-                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, src_img->bpp, dest_img);
+                        imlib_combine_alpha(alpha, alpha_palette, cache_line_top, dest_y, dest_x_start, dest_x_end, bpp, dest_img);
                     }
                     break; // RGB565
                 } // switch on pixel type

@@ -1144,6 +1144,7 @@ typedef struct find_barcodes_list_lnk_data {
 typedef enum image_hint {
     IMAGE_HINT_BILINEAR = 1,
     IMAGE_HINT_BICUBIC,
+    IMAGE_HINT_AREA,
     IMAGE_HINT_CENTER = 128
 } image_hint_t;
 
