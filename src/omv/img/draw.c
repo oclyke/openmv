@@ -876,14 +876,10 @@ void imlib_draw_image(image_t *dest_img, image_t *src_img, int dest_x_start, int
     // For shrinking an image, we use the 'area' method of averaging the pixels
     // Right now this only supports integer scaling options of exactly 1/2, 1/3, etc
     //
-    if (x_scale < 1.0 || y_scale < 1.0)
+    if (hint & IMAGE_HINT_AREA)
     {
-        float xFlip = 1/x_scale, yFlip = 1/y_scale;
         int acc, tx, ty, cx, cy, xsrc, ysrc;
         
-        if (abs(xFlip - (int)xFlip) > (xFlip/100) || abs(yFlip - (int)yFlip) > (yFlip/100)) { // not integer scale factors
-            return;
-        }
         downscale_x = (int)(1/x_scale);
         downscale_y = (int)(1/y_scale);
         ysrc = src_y_start;

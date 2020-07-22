@@ -2002,6 +2002,17 @@ STATIC mp_obj_t py_image_draw_image(uint n_args, const mp_obj_t *args, mp_map_t 
         }
     }
 
+    if (hint & IMAGE_HINT_AREA) { // check scale parameters in this case
+        float xFlip = abs(1.0f/arg_x_scale), yFlip = abs(1.0f/arg_y_scale);
+        
+        if (xFlip <= 1.0f || yFlip <= 1.0f) { // must be scaling down in both dims
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Area scaling must reduce image in both dimensions"));
+        }
+        if (abs(xFlip - floorf(xFlip)) > (xFlip/100.0f) || abs(yFlip - floorf(yFlip)) > (yFlip/100.0f)) { // not integer scale factors
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Area scaling must use 1/integer scale factor for now (e.g. 1/4)"));
+        }
+    }
+
     imlib_draw_image(arg_img, arg_other, arg_cx, arg_cy, arg_x_scale, arg_y_scale, arg_alpha, arg_msk, color_palette, alpha_palette, hint);
 
     return args[0];
