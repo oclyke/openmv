@@ -334,6 +334,22 @@
 // #define AUDIO_SAI_CLK_DISABLE()     __HAL_RCC_SAI1_CLK_DISABLE()
 // #define AUDIO_SAI_DMA_CLK_ENABLE()  __HAL_RCC_DMA2_CLK_ENABLE()
 
+// LCD Interface
+#define OMV_LCD_CONTROLLER           LTDC
+
+#define OMV_LCD_CLK_ENABLE()         __HAL_RCC_LTDC_CLK_ENABLE()
+#define OMV_LCD_CLK_DISABLE()        __HAL_RCC_LTDC_CLK_DISABLE()
+#define OMV_LCD_FORCE_RESET()        __HAL_RCC_LTDC_FORCE_RESET()
+#define OMV_LCD_RELEASE_RESET()      __HAL_RCC_LTDC_RELEASE_RESET()
+
+// DSI Interface
+#define OMV_DSI_CONTROLLER           DSI
+
+#define OMV_DSI_CLK_ENABLE()         __HAL_RCC_DSI_CLK_ENABLE()
+#define OMV_DSI_CLK_DISABLE()        __HAL_RCC_DSI_CLK_DISABLE()
+#define OMV_DSI_FORCE_RESET()        __HAL_RCC_DSI_FORCE_RESET()
+#define OMV_DSI_RELEASE_RESET()      __HAL_RCC_DSI_RELEASE_RESET()
+
 // Enable additional GPIO banks for DRAM...
 #define OMV_ENABLE_GPIO_BANK_G
 #define OMV_ENABLE_GPIO_BANK_H
