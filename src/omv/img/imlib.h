@@ -991,12 +991,13 @@ typedef struct find_barcodes_list_lnk_data {
 } find_barcodes_list_lnk_data_t;
 
 typedef enum image_hint {
-    IMAGE_HINT_AREA = 1,
-    IMAGE_HINT_BILINEAR = 2,
-    IMAGE_HINT_BICUBIC = 4,
-    IMAGE_HINT_CENTER = 128,
-    IMAGE_HINT_EXTRACT_RGB_CHANNEL_FIRST = 256,
-    IMAGE_HINT_APPLY_COLOR_PALETTE_FIRST = 512
+    IMAGE_HINT_AREA = 1 << 0,
+    IMAGE_HINT_BILINEAR = 1 << 1,
+    IMAGE_HINT_BICUBIC = 1 << 2,
+    IMAGE_HINT_CENTER = 1 << 7,
+    IMAGE_HINT_EXTRACT_RGB_CHANNEL_FIRST = 1 << 8,
+    IMAGE_HINT_APPLY_COLOR_PALETTE_FIRST = 1 << 9,
+    IMAGE_HINT_BACKGROUND_IS_BLACK = 1 << 10
 } image_hint_t;
 
 typedef struct imlib_draw_row_data {
@@ -1006,6 +1007,7 @@ typedef struct imlib_draw_row_data {
     int alpha; // user
     const uint16_t *color_palette; // user
     const uint8_t *alpha_palette; // user
+    bool background_is_black; // user
     int toggle; // private
     void *row_buffer[2]; // private
     long smuad_alpha; // private

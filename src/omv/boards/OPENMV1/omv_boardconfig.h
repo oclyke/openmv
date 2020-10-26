@@ -39,6 +39,9 @@
 // HSE/HSI/CSI State
 #define OMV_OSC_HSE_STATE       (RCC_HSE_ON)
 
+// Crystal Freq
+#define OMV_OSC_HSE_FREQ        12000000
+
 // Flash Latency
 #define OMV_FLASH_LATENCY       (FLASH_LATENCY_5)
 

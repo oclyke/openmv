@@ -117,6 +117,9 @@
 #define OMV_OSC_HSE_STATE       (RCC_HSE_BYPASS)
 #define OMV_OSC_HSI48_STATE     (RCC_HSI48_ON)
 
+// Crystal Freq
+#define OMV_OSC_HSE_FREQ        25000000
+
 // Flash Latency
 #define OMV_FLASH_LATENCY       (FLASH_LATENCY_2)
 
@@ -267,6 +270,22 @@
 #define SOFT_I2C_SIOD_WRITE(bit)     HAL_GPIO_WritePin(SOFT_I2C_PORT, SOFT_I2C_SIOD_PIN, bit);
 
 #define SOFT_I2C_SPIN_DELAY          64
+
+// LCD Interface
+#define OMV_LCD_CONTROLLER           LTDC
+
+#define OMV_LCD_CLK_ENABLE()         __HAL_RCC_LTDC_CLK_ENABLE()
+#define OMV_LCD_CLK_DISABLE()        __HAL_RCC_LTDC_CLK_DISABLE()
+#define OMV_LCD_FORCE_RESET()        __HAL_RCC_LTDC_FORCE_RESET()
+#define OMV_LCD_RELEASE_RESET()      __HAL_RCC_LTDC_RELEASE_RESET()
+
+// DSI Interface
+#define OMV_DSI_CONTROLLER           DSI
+
+#define OMV_DSI_CLK_ENABLE()         __HAL_RCC_DSI_CLK_ENABLE()
+#define OMV_DSI_CLK_DISABLE()        __HAL_RCC_DSI_CLK_DISABLE()
+#define OMV_DSI_FORCE_RESET()        __HAL_RCC_DSI_FORCE_RESET()
+#define OMV_DSI_RELEASE_RESET()      __HAL_RCC_DSI_RELEASE_RESET()
 
 // Enable additional GPIO banks for DRAM...
 #define OMV_ENABLE_GPIO_BANK_F

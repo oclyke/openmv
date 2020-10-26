@@ -119,6 +119,9 @@
 #define OMV_OSC_HSE_STATE               (RCC_HSE_ON)
 #define OMV_OSC_HSI48_STATE             (RCC_HSI48_ON)
 
+// Crystal Freq
+#define OMV_OSC_HSE_FREQ                12000000
+
 // Flash Latency
 #define OMV_FLASH_LATENCY               (FLASH_LATENCY_2)
 
@@ -397,6 +400,13 @@
 #define QSPIF_D3_GPIO_CLK_ENABLE()      __HAL_RCC_GPIOF_CLK_ENABLE()
 
 // LCD Interface
+#define OMV_LCD_CONTROLLER              LTDC
+
+#define OMV_LCD_CLK_ENABLE()            __HAL_RCC_LTDC_CLK_ENABLE()
+#define OMV_LCD_CLK_DISABLE()           __HAL_RCC_LTDC_CLK_DISABLE()
+#define OMV_LCD_FORCE_RESET()           __HAL_RCC_LTDC_FORCE_RESET()
+#define OMV_LCD_RELEASE_RESET()         __HAL_RCC_LTDC_RELEASE_RESET()
+
 #define OMV_LCD_R0_PIN                  (GPIO_PIN_13)
 #define OMV_LCD_R1_PIN                  (GPIO_PIN_2)
 #define OMV_LCD_R2_PIN                  (GPIO_PIN_1)
@@ -496,11 +506,23 @@
 
 #define OMV_LCD_DISP_PIN                (GPIO_PIN_9)
 #define OMV_LCD_DISP_PORT               (GPIOG)
+#define OMV_LCD_DISP_ON()               HAL_GPIO_WritePin(OMV_LCD_DISP_PORT, OMV_LCD_DISP_PIN, GPIO_PIN_SET)
+#define OMV_LCD_DISP_OFF()              HAL_GPIO_WritePin(OMV_LCD_DISP_PORT, OMV_LCD_DISP_PIN, GPIO_PIN_RESET)
 
 #define OMV_LCD_BL_PIN                  (GPIO_PIN_0)
 #define OMV_LCD_BL_PORT                 (GPIOB)
 #define OMV_LCD_BL_ALT                  (GPIO_AF2_TIM3)
 #define OMV_LCD_BL_FREQ                 (100000)
+#define OMV_LCD_BL_ON()                 HAL_GPIO_WritePin(OMV_LCD_BL_PORT, OMV_LCD_BL_PIN, GPIO_PIN_SET)
+#define OMV_LCD_BL_OFF()                HAL_GPIO_WritePin(OMV_LCD_BL_PORT, OMV_LCD_BL_PIN, GPIO_PIN_RESET)
+
+#define OMV_LCD_BL_TIM                  (TIM3)
+#define OMV_LCD_BL_TIM_CHANNEL          (TIM_CHANNEL_2)
+#define OMV_LCD_BL_TIM_CLK_ENABLE()     __HAL_RCC_TIM3_CLK_ENABLE()
+#define OMV_LCD_BL_TIM_CLK_DISABLE()    __HAL_RCC_TIM3_CLK_DISABLE()
+#define OMV_LCD_BL_TIM_FORCE_RESET()    __HAL_RCC_TIM3_FORCE_RESET()
+#define OMV_LCD_BL_TIM_RELEASE_RESET()  __HAL_RCC_TIM3_RELEASE_RESET()
+#define OMV_LCD_BL_TIM_PCLK_FREQ()      HAL_RCC_GetPCLK1Freq()
 
 // Touch Screen I/O
 #define OMV_TOUCH_RESET_PIN             (GPIO_PIN_9)
