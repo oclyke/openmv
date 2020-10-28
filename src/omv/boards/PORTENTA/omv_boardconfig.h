@@ -287,6 +287,8 @@
 #define OMV_DSI_RELEASE_RESET()      __HAL_RCC_DSI_RELEASE_RESET()
 
 // SAI4
+#define AUDIO_SAI                   (SAI4_Block_A)
+#define AUDIO_SAI_MCKDIV            (12)
 #define AUDIO_SAI_CK_PORT           (GPIOE)
 #define AUDIO_SAI_CK_PIN            (GPIO_PIN_2)
 #define AUDIO_SAI_CK_AF             (GPIO_AF10_SAI4)
@@ -307,6 +309,7 @@
 // SAI1
 // Set SAI1 clock source in system ex: Sai1ClockSelection = RCC_SAI1CLKSOURCE_PLL;
 // #define AUDIO_SAI                   (SAI1_Block_A)
+// #define AUDIO_SAI_MCKDIV            (12)
 //
 // #define AUDIO_SAI_CK_PORT           (GPIOE)
 // #define AUDIO_SAI_CK_PIN            (GPIO_PIN_2)
