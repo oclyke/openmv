@@ -791,15 +791,6 @@ Q(cartoon)
 // duplicate Q(floating_threshold)
 Q(mask)
 
-// Shadow Removal
-Q(remove_shadows)
-
-// Chromination Invariant
-Q(chrominvar)
-
-// Illumination Invariant
-Q(illuminvar)
-
 // Linear Polar
 Q(linpolar)
 // duplicate Q(reverse)
