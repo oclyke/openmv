@@ -463,6 +463,17 @@ void HAL_SAI_MspDeInit(SAI_HandleTypeDef* hsai)
 }
 #endif
 
+void HAL_CRC_MspInit(CRC_HandleTypeDef* hcrc)
+{
+    __HAL_RCC_CRC_CLK_ENABLE();
+}
+
+
+void HAL_CRC_MspDeInit(CRC_HandleTypeDef* hcrc)
+{
+    __HAL_RCC_CRC_CLK_DISABLE();
+}
+
 void HAL_MspDeInit(void)
 {
 
