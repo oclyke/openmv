@@ -1164,6 +1164,7 @@ Q(next_frame)
 // duplicate Q(copy_to_fb)
 // duplicate Q(loop)
 // duplicate Q(close)
+Q(pause)
 
 // LCD Module
 Q(lcd)
