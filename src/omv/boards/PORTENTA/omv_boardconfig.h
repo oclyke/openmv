@@ -291,6 +291,7 @@
 // SCKx frequency = SAI_KER_CK / MCKDIV / 2
 #define AUDIO_SAI_MCKDIV            (12)
 #define AUDIO_SAI_FREQKHZ           (2048U) // 2048KHz
+#define AUDIO_SAI_NBR_CHANNELS      (2) // Default number of channels.
 
 #define AUDIO_SAI_CK_PORT           (GPIOE)
 #define AUDIO_SAI_CK_PIN            (GPIO_PIN_2)
@@ -314,6 +315,7 @@
 // #define AUDIO_SAI                   (SAI1_Block_A)
 // #define AUDIO_SAI_MCKDIV            (12)
 // #define AUDIO_SAI_FREQKHZ           (2048U) // 2048KHz
+// #define AUDIO_SAI_NBR_CHANNELS      (2) // Default number of channels.
 //
 // #define AUDIO_SAI_CK_PORT           (GPIOE)
 // #define AUDIO_SAI_CK_PIN            (GPIO_PIN_2)
