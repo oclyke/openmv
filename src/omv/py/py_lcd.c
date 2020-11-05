@@ -9,50 +9,25 @@
  * LCD Python module.
  */
 #include STM32_HAL_H
-#include <mp.h>
-#include <objstr.h>
-#include <spi.h>
-#include <systick.h>
-#include "imlib.h"
-#include "fb_alloc.h"
-#include "ff_wrapper.h"
-#include "py_assert.h"
 #include "py_helper.h"
-#include "py_image.h"
+#include "omv_boardconfig.h"
 
-#define RST_PORT            GPIOD
-#define RST_PIN             GPIO_PIN_12
-#define RST_PIN_WRITE(bit)  HAL_GPIO_WritePin(RST_PORT, RST_PIN, bit);
+#define FRAMEBUFFER_COUNT 3
+static int framebuffer_head = 0;
+static volatile int framebuffer_tail = 0;
+static uint16_t *framebuffers[FRAMEBUFFER_COUNT] = {};
 
-#define RS_PORT             GPIOD
-#define RS_PIN              GPIO_PIN_13
-#define RS_PIN_WRITE(bit)   HAL_GPIO_WritePin(RS_PORT, RS_PIN, bit);
+static int lcd_width = 0;
+static int lcd_height = 0;
 
-#define CS_PORT             GPIOB
-#define CS_PIN              GPIO_PIN_12
-#define CS_PIN_WRITE(bit)   HAL_GPIO_WritePin(CS_PORT, CS_PIN, bit);
+static enum {
+    LCD_NONE,
+    LCD_SHIELD,
+    LCD_DISPLAY
+} lcd_type = LCD_NONE;
 
-#define LED_PORT            GPIOA
-#define LED_PIN             GPIO_PIN_5
-#define LED_PIN_WRITE(bit)  HAL_GPIO_WritePin(LED_PORT, LED_PIN, bit);
-
-extern mp_obj_t pyb_spi_send(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
-extern mp_obj_t pyb_spi_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args);
-extern mp_obj_t pyb_spi_deinit(mp_obj_t self_in);
-
-static mp_obj_t spi_port = NULL;
-static int width = 0;
-static int height = 0;
-static enum { LCD_NONE, LCD_SHIELD, LCD_DISPLAY } type = LCD_NONE;
-static bool backlight_init = false;
-
-#define LTDC_FRAMEBUFFER_COUNT 3
-
-static LTDC_HandleTypeDef ltdc_handle;
-static uint16_t *ltdc_framebuffers[LTDC_FRAMEBUFFER_COUNT] = {};
-static LTDC_LayerCfgTypeDef ltdc_framebuffer_layers[LTDC_FRAMEBUFFER_COUNT] = {};
-static int ltdc_framebuffer_head = 0;
-static volatile int ltdc_framebuffer_tail = 0;
+static bool lcd_triple_buffer = false;
+static bool lcd_bgr = false;
 
 static enum {
     LCD_DISPLAY_VGA,
@@ -64,12 +39,367 @@ static enum {
     LCD_DISPLAY_HD,
     LCD_DISPLAY_FHD,
     LCD_DISPLAY_MAX
-} resolution = LCD_DISPLAY_VGA;
+} lcd_resolution = LCD_DISPLAY_VGA;
 
-static int refresh = 0;
+static int lcd_refresh = 0;
+static int lcd_intensity = 0;
 
-static TIM_HandleTypeDef bl_tim_handle;
-static int bl_intensity = 255;
+#ifdef OMV_SPI_LCD_CONTROLLER
+static SPI_HandleTypeDef spi_handle = {};
+static DMA_HandleTypeDef dma_handle = {};
+
+static volatile enum {
+    SPI_TX_CB_IDLE,
+    SPI_TX_CB_MEMORY_WRITE_CMD,
+    SPI_TX_CB_MEMORY_WRITE,
+    SPI_TX_CB_DISPLAY_ON,
+    SPI_TX_CB_DISPLAY_OFF
+} spi_tx_cb_state = SPI_TX_CB_IDLE;
+
+static void spi_config_deinit()
+{
+    if (lcd_triple_buffer) {
+        HAL_SPI_Abort(&spi_handle);
+        HAL_DMA_Deinit(&dma_handle);
+        spi_tx_cb_state = SPI_TX_CB_IDLE;
+        fb_alloc_free_till_mark_past_mark_permanent();
+    }
+
+    HAL_SPI_DeInit(&spi_handle);
+}
+
+static void spi_config_init(int w, int h, int refresh_rate, bool triple_buffer, bool bgr)
+{
+    spi_handle.Mode = SPI_MODE_MASTER;
+    spi_handle.Direction = SPI_DIRECTION_1LINE;
+    spi_handle.DataSize = SPI_DATASIZE_16BIT;
+    spi_handle.CLKPolarity = SPI_POLARITY_LOW;
+    spi_handle.CLKPhase = SPI_PHASE_1EDGE;
+    spi_handle.NSS = SPI_NSS_SOFT;
+    spi_handle.FirstBit = SPI_FIRSTBIT_MSB;
+    spi_handle.TIMode = SPI_TIMODE_DISABLE;
+    spi_handle.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+    spi_handle.CRCPolynomial = 0;
+
+    long baudrate = w * h * refresh_rate * 16;
+    int prescaler = (OMV_SPI_LCD_PCLK_FREQ() + baudrate - 1) / baudrate;
+    if (prescaler <= 2) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2; }
+    else if (prescaler <= 4) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4; }
+    else if (prescaler <= 8) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8; }
+    else if (prescaler <= 16) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16; }
+    else if (prescaler <= 32) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32; }
+    else if (prescaler <= 64) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64; }
+    else if (prescaler <= 128) { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128; }
+    else { spi_handle.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256; }
+
+    HAL_SPI_Init(&spi_handle);
+
+    OMV_SPI_LCD_RST_ON();
+    HAL_Delay(100);
+
+    OMV_SPI_LCD_RST_OFF();
+    HAL_Delay(100);
+
+    OMV_SPI_LCD_RS_ON();
+    OMV_SPI_LCD_CS_LOW();
+    HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x11}, 1, HAL_MAX_DELAY); // sleep out
+    OMV_SPI_LCD_CS_HIGH();
+    OMV_SPI_LCD_RS_OFF();
+    HAL_Delay(120);
+
+    OMV_SPI_LCD_RS_ON();
+    OMV_SPI_LCD_CS_LOW();
+    HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x36}, 1, HAL_MAX_DELAY); // memory data access control
+    OMV_SPI_LCD_CS_HIGH();
+    OMV_SPI_LCD_RS_OFF();
+    OMV_SPI_LCD_CS_LOW();
+    HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, bgr ? 0xC8 : 0xC0}, 1, HAL_MAX_DELAY); // argument
+    OMV_SPI_LCD_CS_HIGH();
+
+    OMV_SPI_LCD_RS_ON();
+    OMV_SPI_LCD_CS_LOW();
+    HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x3A}, 1, HAL_MAX_DELAY); // interface pixel format
+    OMV_SPI_LCD_CS_HIGH();
+    OMV_SPI_LCD_RS_OFF();
+    OMV_SPI_LCD_CS_LOW();
+    HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x05}, 1, HAL_MAX_DELAY); // argument
+    OMV_SPI_LCD_CS_HIGH();
+
+    if (triple_buffer) {
+        fb_alloc_mark();
+
+        framebuffer_head = 0;
+        framebuffer_tail = 0;
+
+        for (int i = 0; i < FRAMEBUFFER_COUNT; i++) {
+            framebuffers[i] = (uint16_t *) fb_alloc0(w * h * sizeof(uint16_t), FB_ALLOC_NO_HINT);
+        }
+
+        dma_handle.Instance                 = OMV_SPI_LCD_DMA;
+#if defined(MCU_SERIES_F4) || defined(MCU_SERIES_F7)
+        dma_handle.Init.Channel             = OMV_SPI_LCD_DMA_REQUEST;
+#else
+        dma_handle.Init.Request             = OMV_SPI_LCD_DMA_REQUEST;
+#endif
+        dma_handle.Init.Direction           = DMA_MEMORY_TO_PERIPH;
+        dma_handle.Init.PeriphInc           = DMA_PINC_DISABLE;
+        dma_handle.Init.MemInc              = DMA_MINC_ENABLE;
+        dma_handle.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+        dma_handle.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+        dma_handle.Init.Mode                = DMA_NORMAL;
+        dma_handle.Init.Priority            = DMA_PRIORITY_HIGH;
+        dma_handle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+        dma_handle.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_1QUARTERFULL;
+        dma_handle.Init.MemBurst            = DMA_MBURST_SINGLE;
+        dma_handle.Init.PeriphBurst         = DMA_PBURST_SINGLE;
+
+        HAL_DMA_Init(&dma_handle);
+
+        __HAL_LINKDMA(&spi_handle, hdmatx, dma_handle);
+
+        NVIC_SetPriority(OMV_SPI_LCD_IRQN, OMV_SPI_LCD_IRQN_PRI);
+        HAL_NVIC_EnableIRQ(OMV_SPI_LCD_IRQN);
+
+        NVIC_SetPriority(OMV_SPI_LCD_DMA_IRQN, OMV_SPI_LCD_DMA_IRQN_PRI);
+        HAL_NVIC_DisableIRQ(OMV_SPI_LCD_DMA_IRQN);
+
+        fb_alloc_mark_permanent();
+    }
+}
+
+static bool spi_tx_cb_state_on[FRAMEBUFFER_COUNT] = {};
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi == OMV_SPI_LCD_CONTROLLER) {
+        static uint16_t *spi_tx_cb_state_memory_write_addr = NULL;
+        static size_t spi_tx_cb_state_memory_write_count = 0;
+        static bool spi_tx_cb_state_memory_write_first = false;
+
+        switch (spi_tx_cb_state) {
+            case SPI_TX_CB_MEMORY_WRITE_CMD: {
+                if (!spi_tx_cb_state_on[framebuffer_head]) {
+                    spi_tx_cb_state = SPI_TX_CB_DISPLAY_OFF;
+                    framebuffer_tail = framebuffer_head;
+                    OMV_SPI_LCD_CS_HIGH();
+                    OMV_SPI_LCD_RS_ON();
+                    OMV_SPI_LCD_CS_LOW();
+                    HAL_SPI_Transmit_DMA(&spi_handle, (uint8_t *) {0x00, 0x28, 0x00, 0x00}, 1); // display off
+                } else {
+                    spi_tx_cb_state = SPI_TX_CB_MEMORY_WRITE;
+                    spi_tx_cb_state_memory_write_addr = framebuffers[framebuffer_head]
+                    spi_tx_cb_state_memory_write_count = lcd_width * lcd_height;
+                    spi_tx_cb_state_memory_write_first = true;
+                    framebuffer_tail = framebuffer_head;
+                    OMV_SPI_LCD_CS_HIGH();
+                    OMV_SPI_LCD_RS_ON();
+                    OMV_SPI_LCD_CS_LOW();
+                    HAL_SPI_Transmit_DMA(&spi_handle, (uint8_t *) {0x00, 0x2C, 0x00, 0x00}, 1); // memory write
+                }
+                break;
+            }
+            case SPI_TX_CB_MEMORY_WRITE: {
+                uint16_t *addr = spi_tx_cb_state_memory_write_addr;
+                size_t count = IM_MIN(spi_tx_cb_state_memory_write_count, 65535);
+                spi_tx_cb_state = (spi_tx_cb_state_memory_write_count > 65535) ? SPI_TX_CB_MEMORY_WRITE : SPI_TX_CB_DISPLAY_ON;
+                spi_tx_cb_state_memory_write_addr += count;
+                spi_tx_cb_state_memory_write_count -= count;
+                if (spi_tx_cb_state_memory_write_first) {
+                    spi_tx_cb_state_memory_write_first = false;
+                    OMV_SPI_LCD_CS_HIGH();
+                    OMV_SPI_LCD_RS_OFF();
+                    OMV_SPI_LCD_CS_LOW();
+                }
+                HAL_SPI_Transmit_DMA(&spi_handle, addr, count);
+                break;
+            }
+            case SPI_TX_CB_DISPLAY_ON: {
+                spi_tx_cb_state = SPI_TX_CB_MEMORY_WRITE_CMD;
+                OMV_SPI_LCD_CS_HIGH();
+                OMV_SPI_LCD_RS_ON();
+                OMV_SPI_LCD_CS_LOW();
+                HAL_SPI_Transmit_DMA(&spi_handle, (uint8_t *) {0x00, 0x29, 0x00, 0x00}, 1); // display on
+                break;
+            }
+            case SPI_TX_CB_DISPLAY_OFF: {
+                spi_tx_cb_state = SPI_TX_CB_IDLE;
+                OMV_SPI_LCD_CS_HIGH();
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+}
+
+// If the callback chain is not running restart it. Display off may have been called so we need wait
+// for that operation to complete before restarting the process.
+static void spi_lcd_kick()
+{
+    int spi_tx_cb_state_sampled = spi_tx_cb_state; // volatile
+
+    if ((spi_tx_cb_state_sampled == SPI_TX_CB_IDLE) || (spi_tx_cb_state_sampled == SPI_TX_CB_DISPLAY_OFF)) {
+        uint32_t tick = HAL_GetTick();
+
+        while (spi_tx_cb_state != SPI_TX_CB_IDLE) { // volatile
+            if ((HAL_GetTick() - tick) >= 1000) return; // give up (should not happen)
+        }
+
+        spi_tx_cb_state = SPI_TX_CB_MEMORY_WRITE_CMD;
+        HAL_SPI_TxCpltCallback(&spi_handle);
+    }
+}
+
+static void spi_lcd_draw_image_cb(int x_start, int x_end, int y_row, imlib_draw_row_data_t *data)
+{
+    HAL_SPI_Transmit(&spi_handle, data->dst_row_override, lcd_width, HAL_MAX_DELAY);
+}
+
+static void spi_lcd_display(image_t *src_img, int dst_x_start, int dst_y_start, float x_scale, float y_scale, rectangle_t *roi,
+                            int rgb_channel, int alpha, const uint16_t *color_palette, const uint8_t *alpha_palette, image_hint_t hint)
+{
+    image_t dst_img;
+    dst_img.w = lcd_width;
+    dst_img.h = lcd_height;
+    dst_img.bpp = IMAGE_BPP_RGB565;
+
+    if (!lcd_triple_buffer) {
+        dst_img.data = fb_alloc0(lcd_width * sizeof(uint16_t), FB_ALLOC_NO_HINT);
+
+        OMV_SPI_LCD_RS_ON();
+        OMV_SPI_LCD_CS_LOW();
+        HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x2C}, 1, HAL_MAX_DELAY); // memory write
+        OMV_SPI_LCD_CS_HIGH();
+        OMV_SPI_LCD_RS_OFF();
+
+        OMV_SPI_LCD_CS_LOW();
+        imlib_draw_image(&dst_img, src_img, dst_x_start, dst_y_start, x_scale, y_scale, roi,
+                         rgb_channel, alpha, color_palette, alpha_palette, hint | IMAGE_HINT_BLACK_BACKGROUND, spi_lcd_draw_image_cb, dst_img.data);
+        OMV_SPI_LCD_CS_HIGH();
+
+        OMV_SPI_LCD_RS_ON();
+        OMV_SPI_LCD_CS_LOW();
+        HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x29}, 1, HAL_MAX_DELAY); // display on
+        OMV_SPI_LCD_CS_HIGH();
+        OMV_SPI_LCD_RS_OFF();
+
+        fb_free();
+    } else {
+        // For triple buffering we are never drawing where head or tail (which may instantly update to
+        // to be equal to head) is.
+        int new_framebuffer_head = (framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+        if (new_framebuffer_head == framebuffer_tail) new_framebuffer_head = (new_framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+        dst_img.data = framebuffers[new_framebuffer_head];
+
+        memset(dst_img.data, 0, lcd_width * lcd_height * sizeof(uint16_t)); // TODO: improve
+        imlib_draw_image(&dst_img, src_img, dst_x_start, dst_y_start, x_scale, y_scale, roi,
+                         rgb_channel, alpha, color_palette, alpha_palette, hint | IMAGE_HINT_BLACK_BACKGROUND, NULL, NULL);
+
+        // Tell the call back FSM that we want to turn the display on.
+        spi_tx_cb_state_on[new_framebuffer_head] = true;
+
+        // Update head which means a new image is ready.
+        framebuffer_head = new_framebuffer_head;
+
+        // Kick off an update of the display.
+        spi_lcd_kick();
+    }
+}
+
+static void spi_lcd_clear()
+{
+    if (!lcd_triple_buffer) {
+        OMV_SPI_LCD_RS_ON();
+        OMV_SPI_LCD_CS_LOW();
+        HAL_SPI_Transmit(&spi_handle, (uint8_t *) {0x00, 0x28}, 1, HAL_MAX_DELAY); // display off
+        OMV_SPI_LCD_CS_HIGH();
+        OMV_SPI_LCD_RS_OFF();
+    } else {
+        // For triple buffering we are never drawing where head or tail (which may instantly update to
+        // to be equal to head) is.
+        int new_framebuffer_head = (framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+        if (new_framebuffer_head == framebuffer_tail) new_framebuffer_head = (new_framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+
+        // Tell the call back FSM that we want to turn the display off.
+        spi_tx_cb_state_on[new_framebuffer_head] = false;
+
+        // Update head which means a new image is ready.
+        framebuffer_head = new_framebuffer_head;
+
+        // Kick off an update of the display.
+        spi_lcd_kick();
+    }
+}
+
+#ifdef OMV_SPI_LCD_BL_DAC
+static DAC_HandleTypeDef lcd_dac_handle = {};
+#endif
+
+static void spi_lcd_set_backlight(int intensity)
+{
+#ifdef OMV_SPI_LCD_BL_DAC
+    if ((lcd_intensity < 255) && (255 <= intensity)) {
+#else
+    if ((lcd_intensity < 1) && (1 <= intensity)) {
+#endif
+        OMV_SPI_LCD_BL_ON();
+        HAL_GPIO_Deinit(OMV_SPI_LCD_BL_PORT, OMV_SPI_LCD_BL_PIN);
+    } else if ((0 < lcd_intensity) && (intensity <= 0)) {
+        GPIO_InitTypeDef GPIO_InitStructure;
+        GPIO_InitStructure.Pull = GPIO_NOPULL;
+        GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStructure.Pin = OMV_SPI_LCD_BL_PIN;
+        HAL_GPIO_Init(OMV_SPI_LCD_BL_PORT, &GPIO_InitStructure);
+        OMV_SPI_LCD_BL_OFF();
+    }
+
+#ifdef OMV_SPI_LCD_BL_DAC
+    if (((lcd_intensity <= 0) || (255 <= lcd_intensity)) && (0 < intensity) && (intensity < 255)) {
+        GPIO_InitTypeDef GPIO_InitStructure;
+        GPIO_InitStructure.Pull = GPIO_NOPULL;
+        GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+        GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStructure.Pin = OMV_SPI_LCD_BL_PIN;
+        HAL_GPIO_Init(OMV_SPI_LCD_BL_PORT, &GPIO_InitStructure);
+
+        lcd_dac_handle.Instance = OMV_SPI_LCD_BL_DAC;
+
+        DAC_ChannelConfTypeDef lcd_dac_channel_handle;
+        lcd_dac_channel_handle.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
+        lcd_dac_channel_handle.DAC_Trigger = DAC_TRIGGER_NONE;
+        lcd_dac_channel_handle.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+        lcd_dac_channel_handle.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
+        lcd_dac_channel_handle.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
+
+        HAL_DAC_Init(&lcd_dac_handle);
+        HAL_DAC_ConfigChannel(&lcd_dac_handle, &lcd_dac_channel_handle, OMV_SPI_LCD_BL_DAC_CHANNEL);
+        HAL_DAC_Start(&lcd_dac_handle, OMV_SPI_LCD_BL_DAC_CHANNEL);
+        HAL_DAC_SetValue(&lcd_dac_handle, OMV_SPI_LCD_BL_DAC_CHANNEL, DAC_ALIGN_8B_R, intensity);
+    } else if ((0 < lcd_intensity) && (lcd_intensity < 255) && ((intensity <= 0) || (255 <= intensity))) {
+        HAL_DAC_Stop(&lcd_dac_handle, OMV_SPI_LCD_BL_DAC_CHANNEL);
+        HAL_DAC_Deinit(&lcd_dac_handle);
+    } else if ((0 < lcd_intensity) && (lcd_intensity < 255) && (0 < intensity) && (intensity < 255)) {
+        HAL_DAC_SetValue(&lcd_dac_handle, OMV_SPI_LCD_BL_DAC_CHANNEL, DAC_ALIGN_8B_R, intensity);
+    }
+#endif
+
+    lcd_intensity = intensity;
+}
+#endif // OMV_SPI_LCD_CONTROLLER
+
+#ifdef OMV_LCD_CONTROLLER
+static const uint32_t resolution_clock[] { // CVT-RB ver 2 @ 60 FPS
+    21363, // VGA
+    26110, // WVGA
+    32597, // SVGA
+    52277, // XGA
+    85920, // SXGA
+    124364, // UXGA
+    60405, // HD
+    133187 // FHD
+};
 
 static const uint16_t resolution_w_h[][2] {
     {640,  480}, // VGA
@@ -81,17 +411,6 @@ static const uint16_t resolution_w_h[][2] {
     {1280, 720}, // HD
     {1920, 1080} // FHD
 }
-
-static const uint32_t resolution_clock[] { // CVT-RB ver 2 @ 60 FPS
-    21363, // VGA
-    26110, // WVGA
-    32597, // SVGA
-    52277, // XGA
-    85920, // SXGA
-    124364, // UXGA
-    60405, // HD
-    133187 // FHD
-};
 
 static const LTDC_InitTypeDef resolution_cfg[] { // CVT-RB ver 2
     { // VGA
@@ -216,6 +535,9 @@ static const LTDC_InitTypeDef resolution_cfg[] { // CVT-RB ver 2
     }
 };
 
+static LTDC_HandleTypeDef ltdc_handle = {};
+static LTDC_LayerCfgTypeDef ltdc_framebuffer_layers[FRAMEBUFFER_COUNT] = {};
+
 static void ltdc_pll_config_deinit()
 {
     __HAL_RCC_PLL3_DISABLE();
@@ -227,7 +549,7 @@ static void ltdc_pll_config_deinit()
     }
 }
 
-static void ltdc_pll_config_init(uint32_t frame_size, uint32_t refresh_rate)
+static void ltdc_pll_config_init(int frame_size, int refresh_rate)
 {
     uint32_t pixel_clock = (resolution_clock[frame_size] * refresh_rate) / 60;
 
@@ -277,30 +599,33 @@ static void ltdc_config_deinit()
 {
     HAL_LTDC_DeInit(&ltdc_handle);
     ltdc_pll_config_deinit();
-
-    for (int i = 0; i < LTDC_FRAMEBUFFER_COUNT; i++) {
-        if (ltdc_framebuffers[i]) {
-            ltdc_framebuffers[i] = NULL;
-            fb_free();
-        }
-    }
+    fb_alloc_free_till_mark_past_mark_permanent();
 }
 
-static void ltdc_config_init(uint32_t frame_size, uint32_t refresh_rate)
+static void ltdc_config_init(int frame_size, int refresh_rate)
 {
-    for (int i = 0; i < LTDC_FRAMEBUFFER_COUNT; i++) {
+    int w = resolution_w_h[frame_size][0];
+    int h = resolution_w_h[frame_size][1];
+
+    fb_alloc_mark();
+
+    framebuffer_head = 0;
+    framebuffer_tail = 0;
+
+    for (int i = 0; i < FRAMEBUFFER_COUNT; i++) {
+        framebuffers[i] = (uint16_t *) fb_alloc0(w * h * sizeof(uint16_t), FB_ALLOC_NO_HINT);
         ltdc_framebuffer_layers[i].WindowX0 = 0;
-        ltdc_framebuffer_layers[i].WindowX1 = width;
+        ltdc_framebuffer_layers[i].WindowX1 = w;
         ltdc_framebuffer_layers[i].WindowY0 = 0;
-        ltdc_framebuffer_layers[i].WindowY1 = height;
+        ltdc_framebuffer_layers[i].WindowY1 = h;
         ltdc_framebuffer_layers[i].PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
         ltdc_framebuffer_layers[i].Alpha = 0;
         ltdc_framebuffer_layers[i].Alpha0 = 0;
         ltdc_framebuffer_layers[i].BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
         ltdc_framebuffer_layers[i].BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
-        ltdc_framebuffer_layers[i].FBStartAdress = ltdc_framebuffers[i] = (uint16_t *) fb_alloc0(width * height * sizeof(uint16_t), FB_ALLOC_NO_HINT);
-        ltdc_framebuffer_layers[i].ImageWidth = width;
-        ltdc_framebuffer_layers[i].ImageHeight = height;
+        ltdc_framebuffer_layers[i].FBStartAdress = framebuffers[i];
+        ltdc_framebuffer_layers[i].ImageWidth = w;
+        ltdc_framebuffer_layers[i].ImageHeight = h;
         ltdc_framebuffer_layers[i].Backcolor.Blue = 0;
         ltdc_framebuffer_layers[i].Backcolor.Green = 0;
         ltdc_framebuffer_layers[i].Backcolor.Red = 0;
@@ -315,6 +640,8 @@ static void ltdc_config_init(uint32_t frame_size, uint32_t refresh_rate)
 
     NVIC_SetPriority(LTDC_IRQn, IRQ_PRI_LTDC);
     HAL_NVIC_EnableIRQ(LTDC_IRQn);
+
+    fb_alloc_mark_permanent();
 }
 
 // Set the output to be equal to whatever head is and update tail to point to head. We never want
@@ -322,47 +649,47 @@ static void ltdc_config_init(uint32_t frame_size, uint32_t refresh_rate)
 void HAL_LTDC_ReloadEventCallback(LTDC_HandleTypeDef *hltdc)
 {
     // If Alpha is zero then disable the layer to save bandwidth.
-    if (ltdc_framebuffer_layers[ltdc_framebuffer_head].Alpha) {
-        HAL_LTDC_ConfigLayer(&ltdc_handle, &ltdc_framebuffer_layers[ltdc_framebuffer_head], LTDC_LAYER_1);
+    if (ltdc_framebuffer_layers[framebuffer_head].Alpha) {
+        HAL_LTDC_ConfigLayer(&ltdc_handle, &ltdc_framebuffer_layers[framebuffer_head], LTDC_LAYER_1);
     } else {
         __HAL_LTDC_LAYER_DISABLE(&ltdc_handle, LTDC_LAYER_1);
     }
 
-    ltdc_framebuffer_tail = ltdc_framebuffer_head;
+    framebuffer_tail = framebuffer_head;
 }
 
 static void ltdc_display(image_t *src_img, int dst_x_start, int dst_y_start, float x_scale, float y_scale, rectangle_t *roi,
                          int rgb_channel, int alpha, const uint16_t *color_palette, const uint8_t *alpha_palette, image_hint_t hint)
 {
     image_t dst_img;
-    dst_img.w = width;
-    dst_img.h = height;
+    dst_img.w = lcd_width;
+    dst_img.h = lcd_height;
     dst_img.bpp = IMAGE_BPP_RGB565;
 
     // For triple buffering we are never drawing where head or tail (which may instantly update to
     // to be equal to head) is.
-    int new_ltdc_framebuffer_head = (ltdc_framebuffer_head + 1) % LTDC_FRAMEBUFFER_COUNT;
-    if (new_ltdc_framebuffer_head == ltdc_framebuffer_tail) new_ltdc_framebuffer_head = (new_ltdc_framebuffer_head + 1) % LTDC_FRAMEBUFFER_COUNT;
-    dst_img.data = ltdc_framebuffers[new_ltdc_framebuffer_head];
+    int new_framebuffer_head = (framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+    if (new_framebuffer_head == framebuffer_tail) new_framebuffer_head = (new_framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+    dst_img.data = framebuffers[new_framebuffer_head];
 
     // Set default values for the layer to display the whole framebuffer.
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX0 = 0;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX1 = dst_img.w;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY0 = 0;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY1 = dst_img.h;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = fast_roundf((alpha * 255) / 256.f);
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].FBStartAdress = dst_img.data;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageWidth = dst_img.w;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageHeight = dst_img.h;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowX0 = 0;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowX1 = dst_img.w;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowY0 = 0;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowY1 = dst_img.h;
+    ltdc_framebuffer_layers[new_framebuffer_head].Alpha = fast_roundf((alpha * 255) / 256.f);
+    ltdc_framebuffer_layers[new_framebuffer_head].FBStartAdress = dst_img.data;
+    ltdc_framebuffer_layers[new_framebuffer_head].ImageWidth = dst_img.w;
+    ltdc_framebuffer_layers[new_framebuffer_head].ImageHeight = dst_img.h;
 
     // If alpha was initially black we don't need to do anything. Just display a black layer.
-    while (ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha) {
+    while (ltdc_framebuffer_layers[new_framebuffer_head].Alpha) {
 
         if (alpha_palette) {
             int i = 0;
             while ((i < 256) && (!alpha_palette[i])) i++;
             if (i == 256) { // zero alpha palette
-                ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
+                ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
                 break;
             }
         }
@@ -370,8 +697,8 @@ static void ltdc_display(image_t *src_img, int dst_x_start, int dst_y_start, flo
         // Set alpha to 256 here as we will use the layer alpha to blend the image into the background
         // color of black for free.
         imlib_draw_image(&dst_img, src_img, dst_x_start, dst_y_start, x_scale, y_scale, roi,
-                         rgb_channel, 256, color_palette, alpha_palette, hint | IMAGE_HINT_BACKGROUND_IS_BLACK);
-        // The IMAGE_HINT_BACKGROUND_IS_BLACK flag saves having to clear the area the image is being
+                         rgb_channel, 256, color_palette, alpha_palette, hint | IMAGE_HINT_BLACK_BACKGROUND, NULL, NULL);
+        // The IMAGE_HINT_BLACK_BACKGROUND flag saves having to clear the area the image is being
         // drawn on and speeds up alpha palette blending.
 
         // To save time clearing the framebuffer before drawing on it per frame we compute the extent of
@@ -396,14 +723,14 @@ static void ltdc_display(image_t *src_img, int dst_x_start, int dst_y_start, flo
         }
 
         if (dst_x_start >= dst_img.w) {
-            ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
+            ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
             break;
         }
 
         int src_x_dst_width = src_width_scaled - src_x_start;
 
         if (src_x_dst_width <= 0) {
-            ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
+            ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
             break;
         }
 
@@ -415,14 +742,14 @@ static void ltdc_display(image_t *src_img, int dst_x_start, int dst_y_start, flo
         }
 
         if (dst_y_start >= dst_img.h) {
-            ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
+            ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
             break;
         }
 
         int src_y_dst_height = src_height_scaled - src_y_start;
 
         if (src_y_dst_height <= 0) {
-            ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
+            ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
             break;
         }
 
@@ -435,18 +762,18 @@ static void ltdc_display(image_t *src_img, int dst_x_start, int dst_y_start, flo
         if (dst_y_end > dst_img.h) dst_y_end = dst_img.h;
 
         // Optimize the layer size turning everything black that wasn't drawn on and saving RAM bandwidth.
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX0 = dst_x_start;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX1 = dst_x_end;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY0 = dst_y_start;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY1 = dst_y_end;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].FBStartAdress = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(&dst_img, dst_y_start) + dst_x_start;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageWidth = dst_img.w;
-        ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageHeight = dst_y_end - dst_y_start;
+        ltdc_framebuffer_layers[new_framebuffer_head].WindowX0 = dst_x_start;
+        ltdc_framebuffer_layers[new_framebuffer_head].WindowX1 = dst_x_end;
+        ltdc_framebuffer_layers[new_framebuffer_head].WindowY0 = dst_y_start;
+        ltdc_framebuffer_layers[new_framebuffer_head].WindowY1 = dst_y_end;
+        ltdc_framebuffer_layers[new_framebuffer_head].FBStartAdress = IMAGE_COMPUTE_RGB565_PIXEL_ROW_PTR(&dst_img, dst_y_start) + dst_x_start;
+        ltdc_framebuffer_layers[new_framebuffer_head].ImageWidth = dst_img.w;
+        ltdc_framebuffer_layers[new_framebuffer_head].ImageHeight = dst_y_end - dst_y_start;
         break;
     }
 
     // Update head which means a new image is ready.
-    ltdc_framebuffer_head = new_ltdc_framebuffer_head;
+    framebuffer_head = new_framebuffer_head;
 
     // Kick off an update of the display pointer.
     HAL_LTDC_Reload(&ltdc_handle, LTDC_RELOAD_VERTICAL_BLANKING);
@@ -456,29 +783,37 @@ static void ltdc_clear()
 {
     // For triple buffering we are never drawing where head or tail (which may instantly update to
     // to be equal to head) is.
-    int new_ltdc_framebuffer_head = (ltdc_framebuffer_head + 1) % LTDC_FRAMEBUFFER_COUNT;
-    if (new_ltdc_framebuffer_head == ltdc_framebuffer_tail) new_ltdc_framebuffer_head = (new_ltdc_framebuffer_head + 1) % LTDC_FRAMEBUFFER_COUNT;
+    int new_framebuffer_head = (framebuffer_head + 1) % FRAMEBUFFER_COUNT;
+    if (new_framebuffer_head == framebuffer_tail) new_framebuffer_head = (new_framebuffer_head + 1) % FRAMEBUFFER_COUNT;
 
     // Set default values for the layer to display the whole framebuffer.
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX0 = 0;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowX1 = width;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY0 = 0;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].WindowY1 = height;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].Alpha = 0;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].FBStartAdress = ltdc_framebuffers[new_ltdc_framebuffer_head];
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageWidth = width;
-    ltdc_framebuffer_layers[new_ltdc_framebuffer_head].ImageHeight = height;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowX0 = 0;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowX1 = lcd_width;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowY0 = 0;
+    ltdc_framebuffer_layers[new_framebuffer_head].WindowY1 = lcd_height;
+    ltdc_framebuffer_layers[new_framebuffer_head].Alpha = 0;
+    ltdc_framebuffer_layers[new_framebuffer_head].FBStartAdress = framebuffers[new_framebuffer_head];
+    ltdc_framebuffer_layers[new_framebuffer_head].ImageWidth = lcd_width;
+    ltdc_framebuffer_layers[new_framebuffer_head].ImageHeight = lcd_height;
 
     // Update head which means a new image is ready.
-    ltdc_framebuffer_head = new_ltdc_framebuffer_head;
+    framebuffer_head = new_framebuffer_head;
 
     // Kick off an update of the display pointer.
     HAL_LTDC_Reload(&ltdc_handle, LTDC_RELOAD_VERTICAL_BLANKING);
 }
 
+#ifdef OMV_LCD_BL_TIM
+static TIM_HandleTypeDef lcd_tim_handle = {};
+#endif
+
 static void ltdc_set_backlight(int intensity)
 {
-    if ((bl_intensity < 255) && (255 <= intensity)) {
+#ifdef OMV_LCD_BL_TIM
+    if ((lcd_intensity < 255) && (255 <= intensity)) {
+#else
+    if ((lcd_intensity < 1) && (1 <= intensity)) {
+#endif
         GPIO_InitTypeDef GPIO_InitStructure;
         GPIO_InitStructure.Pull = GPIO_NOPULL;
         GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
@@ -486,15 +821,16 @@ static void ltdc_set_backlight(int intensity)
         GPIO_InitStructure.Pin = OMV_LCD_BL_PIN;
         HAL_GPIO_Init(OMV_LCD_BL_PORT, &GPIO_InitStructure);
         OMV_LCD_BL_ON();
-    } else if ((0 < bl_intensity) && (intensity <= 0)) {
+    } else if ((0 < lcd_intensity) && (intensity <= 0)) {
         OMV_LCD_BL_OFF();
         HAL_GPIO_Deinit(OMV_LCD_BL_PORT, OMV_LCD_BL_PIN);
     }
 
+#ifdef OMV_LCD_BL_TIM
     int tclk = OMV_LCD_BL_TIM_PCLK_FREQ() * 2;
     int period = (tclk / OMV_LCD_BL_FREQ) - 1;
 
-    if (((bl_intensity <= 0) || (255 <= bl_intensity)) && (0 < intensity) && (intensity < 255)) {
+    if (((lcd_intensity <= 0) || (255 <= lcd_intensity)) && (0 < intensity) && (intensity < 255)) {
         GPIO_InitTypeDef GPIO_InitStructure;
         GPIO_InitStructure.Pull = GPIO_NOPULL;
         GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
@@ -503,197 +839,64 @@ static void ltdc_set_backlight(int intensity)
         GPIO_InitStructure.Pin = OMV_LCD_BL_PIN;
         HAL_GPIO_Init(OMV_LCD_BL_PORT, &GPIO_InitStructure);
 
-        bl_tim_handle.Instance = OMV_LCD_BL_TIM;
-        bl_tim_handle.Init.Period = period;
-        bl_tim_handle.Init.Prescaler = TIM_ETRPRESCALER_DIV1;
-        bl_tim_handle.Init.CounterMode = TIM_COUNTERMODE_UP;
-        bl_tim_handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+        lcd_tim_handle.Instance = OMV_LCD_BL_TIM;
+        lcd_tim_handle.Init.Period = period;
+        lcd_tim_handle.Init.Prescaler = TIM_ETRPRESCALER_DIV1;
+        lcd_tim_handle.Init.CounterMode = TIM_COUNTERMODE_UP;
+        lcd_tim_handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 
-        TIM_OC_InitTypeDef bl_tim_oc_handle;
-        bl_tim_oc_handle.Pulse = (period * intensity) / 255;
-        bl_tim_oc_handle.OCMode = TIM_OCMODE_PWM1;
-        bl_tim_oc_handle.OCPolarity = TIM_OCPOLARITY_HIGH;
-        bl_tim_oc_handle.OCFastMode = TIM_OCFAST_DISABLE;
-        bl_tim_oc_handle.OCIdleState = TIM_OCIDLESTATE_RESET;
+        TIM_OC_InitTypeDef lcd_tim_oc_handle;
+        lcd_tim_oc_handle.Pulse = (period * intensity) / 255;
+        lcd_tim_oc_handle.OCMode = TIM_OCMODE_PWM1;
+        lcd_tim_oc_handle.OCPolarity = TIM_OCPOLARITY_HIGH;
+        lcd_tim_oc_handle.OCFastMode = TIM_OCFAST_DISABLE;
+        lcd_tim_oc_handle.OCIdleState = TIM_OCIDLESTATE_RESET;
 
-        HAL_TIM_PWM_Init(&bl_tim_handle);
-        HAL_TIM_PWM_ConfigChannel(&bl_tim_handle, &bl_tim_oc_handle, OMV_LCD_BL_TIM_CHANNEL);
-        HAL_TIM_PWM_Start(&bl_tim_handle, OMV_LCD_BL_TIM_CHANNEL);
-    } else if ((0 < bl_intensity) && (bl_intensity < 255) && ((intensity <= 0) || (255 <= intensity))) {
-        HAL_TIM_PWM_Stop(&bl_tim_handle, OMV_LCD_BL_TIM_CHANNEL);
-        HAL_TIM_PWM_Deinit(&bl_tim_handle);
-    } else if ((0 < bl_intensity) && (bl_intensity < 255) && (0 < intensity) && (intensity < 255)) {
-        __HAL_TIM_SET_COMPARE(&bl_tim_handle, OMV_LCD_BL_TIM_CHANNEL, (period * intensity) / 255);
+        HAL_TIM_PWM_Init(&lcd_tim_handle);
+        HAL_TIM_PWM_ConfigChannel(&lcd_tim_handle, &lcd_tim_oc_handle, OMV_LCD_BL_TIM_CHANNEL);
+        HAL_TIM_PWM_Start(&lcd_tim_handle, OMV_LCD_BL_TIM_CHANNEL);
+    } else if ((0 < lcd_intensity) && (lcd_intensity < 255) && ((intensity <= 0) || (255 <= intensity))) {
+        HAL_TIM_PWM_Stop(&lcd_tim_handle, OMV_LCD_BL_TIM_CHANNEL);
+        HAL_TIM_PWM_Deinit(&lcd_tim_handle);
+    } else if ((0 < lcd_intensity) && (lcd_intensity < 255) && (0 < intensity) && (intensity < 255)) {
+        __HAL_TIM_SET_COMPARE(&lcd_tim_handle, OMV_LCD_BL_TIM_CHANNEL, (period * intensity) / 255);
     }
+#endif
 
-    bl_intensity = intensity;
+    lcd_intensity = intensity;
 }
-
-// Send out 8-bit data using the SPI object.
-STATIC void lcd_write_command_byte(uint8_t data_byte)
-{
-    mp_map_t arg_map;
-    arg_map.all_keys_are_qstrs = true;
-    arg_map.is_fixed = true;
-    arg_map.is_ordered = true;
-    arg_map.used = 0;
-    arg_map.alloc = 0;
-    arg_map.table = NULL;
-
-    CS_PIN_WRITE(false);
-    RS_PIN_WRITE(false); // command
-    pyb_spi_send(
-        2, (mp_obj_t []) {
-            spi_port,
-            mp_obj_new_int(data_byte)
-        },
-        &arg_map
-    );
-    CS_PIN_WRITE(true);
-}
-
-// Send out 8-bit data using the SPI object.
-STATIC void lcd_write_data_byte(uint8_t data_byte)
-{
-    mp_map_t arg_map;
-    arg_map.all_keys_are_qstrs = true;
-    arg_map.is_fixed = true;
-    arg_map.is_ordered = true;
-    arg_map.used = 0;
-    arg_map.alloc = 0;
-    arg_map.table = NULL;
-
-    CS_PIN_WRITE(false);
-    RS_PIN_WRITE(true); // data
-    pyb_spi_send(
-        2, (mp_obj_t []) {
-            spi_port,
-            mp_obj_new_int(data_byte)
-        },
-        &arg_map
-    );
-    CS_PIN_WRITE(true);
-}
-
-// Send out 8-bit data using the SPI object.
-STATIC void lcd_write_command(uint8_t data_byte, uint32_t len, uint8_t *dat)
-{
-    lcd_write_command_byte(data_byte);
-    for (uint32_t i=0; i<len; i++) lcd_write_data_byte(dat[i]);
-}
-
-// Send out 8-bit data using the SPI object.
-STATIC void lcd_write_data(uint32_t len, uint8_t *dat)
-{
-    mp_obj_str_t arg_str;
-    arg_str.base.type = &mp_type_bytes;
-    arg_str.hash = 0;
-    arg_str.len = len;
-    arg_str.data = dat;
-
-    mp_map_t arg_map;
-    arg_map.all_keys_are_qstrs = true;
-    arg_map.is_fixed = true;
-    arg_map.is_ordered = true;
-    arg_map.used = 0;
-    arg_map.alloc = 0;
-    arg_map.table = NULL;
-
-    CS_PIN_WRITE(false);
-    RS_PIN_WRITE(true); // data
-    pyb_spi_send(
-        2, (mp_obj_t []) {
-            spi_port,
-            &arg_str
-        },
-        &arg_map
-    );
-    CS_PIN_WRITE(true);
-}
-
-static void spi_lcd_display()
-{
-    lcd_write_command_byte(0x2C);
-    fb_alloc_mark();
-    uint8_t *zero = fb_alloc0(width*2, FB_ALLOC_NO_HINT);
-    uint16_t *line = fb_alloc(width*2, FB_ALLOC_NO_HINT);
-    for (int i=0; i<t_pad; i++) {
-        lcd_write_data(width*2, zero);
-    }
-    for (int i=0; i<rect.h; i++) {
-        if (l_pad) {
-            lcd_write_data(l_pad*2, zero); // l_pad < width
-        }
-        if (IM_IS_GS(arg_img)) {
-            for (int j=0; j<rect.w; j++) {
-                uint8_t pixel = IM_GET_GS_PIXEL(arg_img, (rect.x + j), (rect.y + i));
-                line[j] = COLOR_Y_TO_RGB565(pixel);
-            }
-        } else {
-            for (int j=0; j<rect.w; j++) {
-                uint16_t pixel = IM_GET_RGB565_PIXEL(arg_img, (rect.x + j), (rect.y + i));
-                line[j] = __REV16(pixel);
-            }
-        }
-        lcd_write_data(rect.w*2, (uint8_t *) line);
-        if (r_pad) {
-            lcd_write_data(r_pad*2, zero); // r_pad < width
-        }
-    }
-    for (int i=0; i<b_pad; i++) {
-        lcd_write_data(width*2, zero);
-    }
-    fb_alloc_free_till_mark();
-}
-
-static void spi_lcd_clear()
-{
-    lcd_write_command_byte(0x2C);
-    fb_alloc_mark();
-    uint8_t *zero = fb_alloc0(width*2, FB_ALLOC_NO_HINT);
-    for (int i=0; i<height; i++) {
-        lcd_write_data(width*2, zero);
-    }
-    fb_alloc_free_till_mark();
-}
-
-static void spi_lcd_set_backlight(int intensity)
-{
-    if (!backlight_init) {
-        GPIO_InitTypeDef GPIO_InitStructure;
-        GPIO_InitStructure.Pull  = GPIO_NOPULL;
-        GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-        GPIO_InitStructure.Mode  = GPIO_MODE_OUTPUT_OD;
-        GPIO_InitStructure.Pin = LED_PIN;
-        LED_PIN_WRITE(bit); // Set first to prevent glitches.
-        HAL_GPIO_Init(LED_PORT, &GPIO_InitStructure);
-        backlight_init = true;
-    }
-    LED_PIN_WRITE(intensity);
-
-    bl_intensity = intensity;
-}
+#endif // OMV_LCD_CONTROLLER
 
 STATIC mp_obj_t py_lcd_deinit()
 {
-    switch (type) {
-        case LCD_NONE:
-            return mp_const_none;
-        case LCD_SHIELD:
-            HAL_GPIO_DeInit(RST_PORT, RST_PIN);
-            HAL_GPIO_DeInit(RS_PORT, RS_PIN);
-            HAL_GPIO_DeInit(CS_PORT, CS_PIN);
-            pyb_spi_deinit(spi_port);
-            spi_port = NULL;
-            width = 0;
-            height = 0;
-            type = LCD_NONE;
-            if (backlight_init) {
-                HAL_GPIO_DeInit(LED_PORT, LED_PIN);
-                backlight_init = false;
-            }
-            return mp_const_none;
+    switch (lcd_type) {
+        #ifdef OMV_SPI_LCD_CONTROLLER
+        case LCD_SHIELD: {
+            spi_config_deinit();
+            spi_lcd_set_backlight(255); // back to default state
+            break;
+        }
+        #endif
+        #ifdef OMV_LCD_CONTROLLER
+        case LCD_DISPLAY: {
+            ltdc_config_deinit();
+            ltdc_set_backlight(0); // back to default state
+            break;
+        }
+        #endif
+        default: {
+            break;
+        }
     }
+
+    lcd_width = 0;
+    lcd_height = 0;
+    lcd_type = LCD_NONE;
+    lcd_triple_buffer = false;
+    lcd_bgr = false;
+    lcd_resolution = 0;
+    lcd_refresh = 0;
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_deinit_obj, py_lcd_deinit);
@@ -703,78 +906,46 @@ STATIC mp_obj_t py_lcd_init(uint n_args, const mp_obj_t *args, mp_map_t *kw_args
     py_lcd_deinit();
 
     switch (py_helper_keyword_int(n_args, args, 0, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_type), LCD_SHIELD)) {
+        #ifdef OMV_SPI_LCD_CONTROLLER
         case LCD_SHIELD: {
-            GPIO_InitTypeDef GPIO_InitStructure;
-            GPIO_InitStructure.Pull  = GPIO_NOPULL;
-            GPIO_InitStructure.Speed = GPIO_SPEED_LOW;
-            GPIO_InitStructure.Mode  = GPIO_MODE_OUTPUT_OD;
-
-            GPIO_InitStructure.Pin = CS_PIN;
-            CS_PIN_WRITE(true); // Set first to prevent glitches.
-            HAL_GPIO_Init(CS_PORT, &GPIO_InitStructure);
-
-            GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-
-            GPIO_InitStructure.Pin = RST_PIN;
-            RST_PIN_WRITE(true); // Set first to prevent glitches.
-            HAL_GPIO_Init(RST_PORT, &GPIO_InitStructure);
-
-            GPIO_InitStructure.Pin = RS_PIN;
-            RS_PIN_WRITE(true); // Set first to prevent glitches.
-            HAL_GPIO_Init(RS_PORT, &GPIO_InitStructure);
-
-            spi_port = pyb_spi_make_new(NULL,
-                2, // n_args
-                3, // n_kw
-                (mp_obj_t []) {
-                    MP_OBJ_NEW_SMALL_INT(2), // SPI Port
-                    MP_OBJ_NEW_SMALL_INT(SPI_MODE_MASTER),
-                    MP_OBJ_NEW_QSTR(MP_QSTR_baudrate),
-                    MP_OBJ_NEW_SMALL_INT(1000000000/66), // 66 ns clk period
-                    MP_OBJ_NEW_QSTR(MP_QSTR_polarity),
-                    MP_OBJ_NEW_SMALL_INT(0),
-                    MP_OBJ_NEW_QSTR(MP_QSTR_phase),
-                    MP_OBJ_NEW_SMALL_INT(0)
-                }
-            );
-            width = 128;
-            height = 160;
-            type = LCD_SHIELD;
-            backlight_init = false;
-
-            RST_PIN_WRITE(false);
-            systick_sleep(100);
-            RST_PIN_WRITE(true);
-            systick_sleep(100);
-            lcd_write_command_byte(0x11); // Sleep Exit
-            systick_sleep(120);
-
-            // Memory Data Access Control
-            uint8_t madctl = 0xC0;
-            uint8_t bgr = py_helper_keyword_int(n_args, args, 0, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_bgr), 0);
-            lcd_write_command(0x36, 1, (uint8_t []) {madctl | (bgr<<3)});
-
-            // Interface Pixel Format
-            lcd_write_command(0x3A, 1, (uint8_t []) {0x05});
-
-            // Display on
-            lcd_write_command_byte(0x29);
-
+            int w = py_helper_keyword_int(n_args, args, 1, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_width), 128);
+            if ((w <= 0) || (32767 < w) || (w % 2)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Width!"));
+            int h = py_helper_keyword_int(n_args, args, 2, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_height), 160);
+            if ((h <= 0) || (32767 < h) || (h % 2)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Height!"));
+            int refresh_rate = py_helper_keyword_int(n_args, args, 3, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_refresh), 60);
+            if ((refresh_rate < 30) || (120 < refresh_rate)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Refresh Rate!"));
+            bool triple_buffer = py_helper_keyword_int(n_args, args, 4, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_triple_buffer), false);
+            bool bgr = py_helper_keyword_int(n_args, args, 5, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_bgr), false);
+            spi_config_init(w, h, refresh_rate, triple_buffer, bgr);
+            spi_lcd_set_backlight(255); // to on state
+            lcd_width = w;
+            lcd_height = h;
+            lcd_type = LCD_SHIELD;
+            lcd_triple_buffer = triple_buffer;
+            lcd_bgr = bgr;
+            lcd_resolution = 0;
+            lcd_refresh = refresh_rate;
             break;
         }
+        #endif
+        #ifdef OMV_LCD_CONTROLLER
         case LCD_DISPLAY: {
-            int frame_size = py_helper_keyword_int(n_args, args, 1, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_framesize), LCD_DISPLAY_VGA);
+            int frame_size = py_helper_keyword_int(n_args, args, 1, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_framesize), LCD_DISPLAY_WVGA);
             if ((frame_size < 0) || (LCD_DISPLAY_MAX <= frame_size)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Frame Size!"));
             int refresh_rate = py_helper_keyword_int(n_args, args, 2, kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_refresh), 60);
             if ((refresh_rate < 30) || (120 < refresh_rate)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Refresh Rate!"));
             ltdc_config_init(frame_size, refresh_rate);
-            width = resolution_w_h[resolution][0];
-            height = resolution_w_h[resolution][1];
-            type = LCD_DISPLAY;
-            resolution = frame_size;
-            refresh = refresh_rate;
+            ltdc_set_backlight(255); // to on state
+            lcd_width = resolution_w_h[frame_size][0];
+            lcd_height = resolution_w_h[frame_size][1];
+            lcd_type = LCD_DISPLAY;
+            lcd_triple_buffer = true;
+            lcd_bgr = false;
+            lcd_resolution = frame_size;
+            lcd_refresh = refresh_rate;
             break;
         }
+        #endif
         default: {
             break;
         }
@@ -786,36 +957,50 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(py_lcd_init_obj, 0, py_lcd_init);
 
 STATIC mp_obj_t py_lcd_width()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(width);
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_width);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_width_obj, py_lcd_width);
 
 STATIC mp_obj_t py_lcd_height()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(height);
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_height);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_height_obj, py_lcd_height);
 
 STATIC mp_obj_t py_lcd_type()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(type);
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_type);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_type_obj, py_lcd_type);
 
+STATIC mp_obj_t py_lcd_triple_buffer()
+{
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_triple_buffer);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_triple_buffer_obj, py_lcd_triple_buffer);
+
+STATIC mp_obj_t py_lcd_bgr()
+{
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_bgr);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_bgr_obj, py_lcd_bgr);
+
 STATIC mp_obj_t py_lcd_framesize()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(resolution);
+    if (lcd_type != LCD_DISPLAY) return mp_const_none;
+    return mp_obj_new_int(lcd_resolution);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_framesize_obj, py_lcd_framesize);
 
 STATIC mp_obj_t py_lcd_refresh()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(refresh);
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_refresh);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_refresh_obj, py_lcd_refresh);
 
@@ -824,15 +1009,19 @@ STATIC mp_obj_t py_lcd_set_backlight(mp_obj_t intensity_obj)
     int intensity = mp_obj_get_int(intensity_obj);
     if ((intensity < 0) || (255 < intensity)) nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "0 <= intensity <= 255!"));
 
-    switch (type) {
+    switch (lcd_type) {
+        #ifdef OMV_SPI_LCD_CONTROLLER
         case LCD_SHIELD: {
             spi_lcd_set_backlight(intensity);
             break;
         }
+        #endif
+        #ifdef OMV_LCD_CONTROLLER
         case LCD_DISPLAY: {
             ltdc_set_backlight(intensity);
             break;
         }
+        #endif
         default: {
             break;
         }
@@ -844,8 +1033,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(py_lcd_set_backlight_obj, py_lcd_set_backlight)
 
 STATIC mp_obj_t py_lcd_get_backlight()
 {
-    if (type == LCD_NONE) return mp_const_none;
-    return mp_obj_new_int(bl_intensity);
+    if (lcd_type == LCD_NONE) return mp_const_none;
+    return mp_obj_new_int(lcd_intensity);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_get_backlight_obj, py_lcd_get_backlight);
 
@@ -920,7 +1109,8 @@ STATIC mp_obj_t py_lcd_display(uint n_args, const mp_obj_t *args, mp_map_t *kw_a
     if ((!got_x_scale) && (!got_x_size) && got_y_size) arg_x_scale = arg_y_scale;
     if ((!got_y_scale) && (!got_y_size) && got_x_size) arg_y_scale = arg_x_scale;
 
-    switch (type) {
+    switch (lcd_type) {
+        #ifdef OMV_SPI_LCD_CONTROLLER
         case LCD_SHIELD: {
             fb_alloc_mark();
             spi_lcd_display(arg_img, arg_x_off, arg_y_off, arg_x_scale, arg_y_scale, &arg_roi,
@@ -928,6 +1118,8 @@ STATIC mp_obj_t py_lcd_display(uint n_args, const mp_obj_t *args, mp_map_t *kw_a
             fb_alloc_free_till_mark();
             break;
         }
+        #endif
+        #ifdef OMV_LCD_CONTROLLER
         case LCD_DISPLAY: {
             fb_alloc_mark();
             ltdc_display(arg_img, arg_x_off, arg_y_off, arg_x_scale, arg_y_scale, &arg_roi,
@@ -935,6 +1127,7 @@ STATIC mp_obj_t py_lcd_display(uint n_args, const mp_obj_t *args, mp_map_t *kw_a
             fb_alloc_free_till_mark();
             break;
         }
+        #endif
         default: {
             break;
         }
@@ -946,17 +1139,19 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(py_lcd_display_obj, 1, py_lcd_display);
 
 STATIC mp_obj_t py_lcd_clear()
 {
-    switch (type) {
+    switch (lcd_type) {
+        #ifdef OMV_SPI_LCD_CONTROLLER
         case LCD_SHIELD: {
-            fb_alloc_mark();
             spi_lcd_clear();
-            fb_alloc_free_till_mark();
             break;
         }
+        #endif
+        #ifdef OMV_LCD_CONTROLLER
         case LCD_DISPLAY: {
             ltdc_clear();
             break;
         }
+        #endif
         default: {
             break;
         }
@@ -968,6 +1163,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(py_lcd_clear_obj, py_lcd_clear);
 
 STATIC const mp_rom_map_elem_t globals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_lcd)          },
+    { MP_ROM_QSTR(MP_QSTR_LCD_NONE),        MP_OBJ_NEW_QSTR(LCD_NONE)             },
+    { MP_ROM_QSTR(MP_QSTR_LCD_SHIELD),      MP_OBJ_NEW_QSTR(LCD_SHIELD)           },
+    { MP_ROM_QSTR(MP_QSTR_LCD_DISPLAY),     MP_OBJ_NEW_QSTR(LCD_DISPLAY)          },
     { MP_ROM_QSTR(MP_QSTR_VGA),             MP_OBJ_NEW_QSTR(LCD_DISPLAY_VGA)      },
     { MP_ROM_QSTR(MP_QSTR_WVGA),            MP_OBJ_NEW_QSTR(LCD_DISPLAY_WVGA)     },
     { MP_ROM_QSTR(MP_QSTR_SVGA),            MP_OBJ_NEW_QSTR(LCD_DISPLAY_SVGA)     },
@@ -981,6 +1179,8 @@ STATIC const mp_rom_map_elem_t globals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_width),           MP_ROM_PTR(&py_lcd_width_obj)         },
     { MP_ROM_QSTR(MP_QSTR_height),          MP_ROM_PTR(&py_lcd_height_obj)        },
     { MP_ROM_QSTR(MP_QSTR_type),            MP_ROM_PTR(&py_lcd_type_obj)          },
+    { MP_ROM_QSTR(MP_QSTR_triple_buffer),   MP_ROM_PTR(&py_lcd_triple_buffer_obj) },
+    { MP_ROM_QSTR(MP_QSTR_bgr),             MP_ROM_PTR(&py_lcd_bgr_obj)           },
     { MP_ROM_QSTR(MP_QSTR_framesize),       MP_ROM_PTR(&py_lcd_framesize_obj)     },
     { MP_ROM_QSTR(MP_QSTR_refresh),         MP_ROM_PTR(&py_lcd_refresh_obj)       },
     { MP_ROM_QSTR(MP_QSTR_get_backlight),   MP_ROM_PTR(&py_lcd_get_backlight_obj) },
