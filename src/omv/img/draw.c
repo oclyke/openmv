@@ -442,16 +442,12 @@ void imlib_draw_row_setup(imlib_draw_row_data_t *data)
 
 #ifdef IMLIB_ENABLE_DMA2D
     data->dma2d_enabled = false;
-    data->dma2d_initialized = false;
-
     void *dst_buff = data->dst_row_override ? data->dst_row_override : data->dst_img->data;
-
-    if (data->dma2d_request && (data->dst_img->bpp == IMAGE_BPP_RGB565) && DMA_BUFFER(dst_buff) &&
+    if ((data->dst_img->bpp == IMAGE_BPP_RGB565) && DMA_BUFFER(dst_buff) &&
         ((data->src_img_bpp == IMAGE_BPP_GRAYSCALE) ||
         ((data->src_img_bpp == IMAGE_BPP_RGB565) && (data->rgb_channel < 0) && (data->alpha != 256) && (!data->color_palette) && (!data->alpha_palette)))) {
         data->row_buffer[1] = fb_alloc(image_row_size, FB_ALLOC_NO_HINT);
         data->dma2d_enabled = true;
-        data->dma2d_initialized = true;
 
         memset(&data->dma2d, 0, sizeof(data->dma2d));
 
@@ -575,7 +571,11 @@ void imlib_draw_row_teardown(imlib_draw_row_data_t *data)
 {
     if (data->smuad_alpha_palette) fb_free();
 #ifdef IMLIB_ENABLE_DMA2D
-    if (data->dma2d_initialized) {
+    // Check the conditional that enabled dma2d_enabled if disabled by imlib_draw_row_put_row_buffer().
+    void *dst_buff = data->dst_row_override ? data->dst_row_override : data->dst_img->data;
+    if ((data->dst_img->bpp == IMAGE_BPP_RGB565) && DMA_BUFFER(dst_buff) &&
+        ((data->src_img_bpp == IMAGE_BPP_GRAYSCALE) ||
+        ((data->src_img_bpp == IMAGE_BPP_RGB565) && (data->rgb_channel < 0) && (data->alpha != 256) && (!data->color_palette) && (!data->alpha_palette)))) {
         if (!data->callback) HAL_DMA2D_PollForTransfer(&data->dma2d, 1000);
         HAL_DMA2D_DeInit(&data->dma2d);
         if (data->src_img_bpp == IMAGE_BPP_GRAYSCALE) fb_free(); // clut...
