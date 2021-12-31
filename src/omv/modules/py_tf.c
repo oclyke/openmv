@@ -240,31 +240,9 @@ STATIC void py_tf_input_data_callback(void *callback_data,
 {
     py_tf_input_data_callback_data_t *arg = (py_tf_input_data_callback_data_t *) callback_data;
 
-    // Disable checking input scaling and zero-point. Nets can be all over the place on the input
-    // scaling and zero-point but still work with the code below.
-
-    // if (params->input_datatype == LIBTF_DATATYPE_UINT8) {
-    //     if (fast_roundf(params->input_scale * GRAYSCALE_RANGE) != 1) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model input scale to be 1/255!"));
-    //     }
-
-    //     if (params->input_zero_point != 0) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model input zero point to be 0!"));
-    //     }
-    // }
-
-    // if (params->input_datatype == LIBTF_DATATYPE_INT8) {
-    //     if (fast_roundf(params->input_scale * GRAYSCALE_RANGE) != 1) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model input scale to be 1/255!"));
-    //     }
-
-    //     if (params->input_zero_point != -GRAYSCALE_MID) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model input zero point to be -128!"));
-    //     }
-    // }
-
-    int shift = (params->input_datatype == LIBTF_DATATYPE_INT8) ? GRAYSCALE_MID : 0;
     float fscale = 1.0f / GRAYSCALE_RANGE;
+    float input_s = 1.0f / (params->input_scale * GRAYSCALE_RANGE);
+    int input_zp = params->input_zero_point;
 
     float xscale = params->input_width / ((float) arg->roi->w);
     float yscale = params->input_height / ((float) arg->roi->h);
@@ -299,17 +277,33 @@ STATIC void py_tf_input_data_callback(void *callback_data,
                 model_input_f32[size] = model_input_u8[size] * fscale;
             }
         } else {
-            if (shift) { // convert u8 -> s8
-                uint8_t *model_input_8 = (uint8_t *) model_input;
+            uint8_t *model_input_8 = (uint8_t *) model_input;
 
-                #if (__ARM_ARCH > 6)
-                for (; size >= 3; size -= 4) {
-                    *((uint32_t *) (model_input_8 + size - 3)) ^= 0x80808080;
+            if (!fast_roundf(input_s - 1.0f)) {
+                if (abs(input_zp) == GRAYSCALE_MID) {
+                    #if (__ARM_ARCH > 6)
+                    for (; size >= 3; size -= 4) {
+                        *((uint32_t *) (model_input_8 + size - 3)) ^= 0x80808080;
+                    }
+                    #endif
+
+                    for (; size >= 0; size -= 1) {
+                        model_input_8[size] ^= GRAYSCALE_MID;
+                    }
+                } else if (input_zp) {
+                    for (; size >= 0; size -= 1) {
+                        model_input_8[size] += input_zp;
+                    }
                 }
-                #endif
-
-                for (; size >= 0; size -= 1) {
-                    model_input_8[size] ^= GRAYSCALE_MID;
+            } else {
+                if (!input_zp) {
+                    for (; size >= 0; size -= 1) {
+                        model_input_8[size] = fast_roundf(model_input_8[size] * input_s);
+                    }
+                } else {
+                    for (; size >= 0; size -= 1) {
+                        model_input_8[size] = fast_roundf((model_input_8[size] * input_s) + input_zp);
+                    }
                 }
             }
         }
@@ -330,11 +324,38 @@ STATIC void py_tf_input_data_callback(void *callback_data,
             uint16_t *model_input_u16 = (uint16_t *) model_input;
             uint8_t *model_input_8 = (uint8_t *) model_input;
 
-            for (; size >= 0; size -= 1, rgb_size -= 3) {
-                int pixel = model_input_u16[size];
-                model_input_8[rgb_size] = COLOR_RGB565_TO_R8(pixel) ^ shift;
-                model_input_8[rgb_size + 1] = COLOR_RGB565_TO_G8(pixel) ^ shift;
-                model_input_8[rgb_size + 2] = COLOR_RGB565_TO_B8(pixel) ^ shift;
+            if (!fast_roundf(input_s - 1.0f)) {
+                if (!input_zp) {
+                    for (; size >= 0; size -= 1, rgb_size -= 3) {
+                        int pixel = model_input_u16[size];
+                        model_input_8[rgb_size] = COLOR_RGB565_TO_R8(pixel);
+                        model_input_8[rgb_size + 1] = COLOR_RGB565_TO_G8(pixel);
+                        model_input_8[rgb_size + 2] = COLOR_RGB565_TO_B8(pixel);
+                    }
+                } else {
+                    for (; size >= 0; size -= 1, rgb_size -= 3) {
+                        int pixel = model_input_u16[size];
+                        model_input_8[rgb_size] = COLOR_RGB565_TO_R8(pixel) + input_zp;
+                        model_input_8[rgb_size + 1] = COLOR_RGB565_TO_G8(pixel) + input_zp;
+                        model_input_8[rgb_size + 2] = COLOR_RGB565_TO_B8(pixel) + input_zp;
+                    }
+                }
+            } else {
+                if (!input_zp) {
+                    for (; size >= 0; size -= 1, rgb_size -= 3) {
+                        int pixel = model_input_u16[size];
+                        model_input_8[rgb_size] = fast_roundf(COLOR_RGB565_TO_R8(pixel) * input_s);
+                        model_input_8[rgb_size + 1] = fast_roundf(COLOR_RGB565_TO_G8(pixel) * input_s);
+                        model_input_8[rgb_size + 2] = fast_roundf(COLOR_RGB565_TO_B8(pixel) * input_s);
+                    }
+                } else {
+                    for (; size >= 0; size -= 1, rgb_size -= 3) {
+                        int pixel = model_input_u16[size];
+                        model_input_8[rgb_size] = fast_roundf((COLOR_RGB565_TO_R8(pixel) * input_s) + input_zp);
+                        model_input_8[rgb_size + 1] = fast_roundf((COLOR_RGB565_TO_G8(pixel) * input_s) + input_zp);
+                        model_input_8[rgb_size + 2] = fast_roundf((COLOR_RGB565_TO_B8(pixel) * input_s) + input_zp);
+                    }
+                }
             }
         }
     }
@@ -359,16 +380,21 @@ STATIC void py_tf_classify_output_data_callback(void *callback_data,
     }
 
     arg->out = mp_obj_new_list(params->output_channels, NULL);
+    mp_obj_t *items = ((mp_obj_list_t *) arg->out)->items;
+    float output_s = params->output_scale;
+    int output_zp = params->output_zero_point;
 
-    if (params->output_datatype == LIBTF_DATATYPE_FLOAT) {
+    if (params->output_datatype == LIBTF_DATATYPE_UINT8) {
         for (int i = 0, ii = params->output_channels; i < ii; i++) {
-            ((mp_obj_list_t *) arg->out)->items[i] =
-                mp_obj_new_float(((float *) model_output)[i]);
+            items[i] = mp_obj_new_float((((uint8_t *) model_output)[i] - output_zp) * output_s);
+        }
+    } else if (params->output_datatype == LIBTF_DATATYPE_INT8) {
+        for (int i = 0, ii = params->output_channels; i < ii; i++) {
+            items[i] = mp_obj_new_float((((int8_t *) model_output)[i] - output_zp) * output_s);
         }
     } else {
         for (int i = 0, ii = params->output_channels; i < ii; i++) {
-            ((mp_obj_list_t *) arg->out)->items[i] =
-                mp_obj_new_float((((uint8_t *) model_output)[i] - params->output_zero_point) * params->output_scale);
+            items[i] = mp_obj_new_float(((float *) model_output)[i]);
         }
     }
 }
@@ -481,57 +507,41 @@ STATIC void py_tf_segment_output_data_callback(void *callback_data,
 {
     py_tf_segment_output_data_callback_data_t *arg = (py_tf_segment_output_data_callback_data_t *) callback_data;
 
-    // Disable checking output scaling and zero-point. Nets can be all over the place on the output
-    // scaling and zero-point but still work with the code below.
-
-    // if (params->output_datatype == LIBTF_DATATYPE_UINT8) {
-    //     if (fast_roundf(params->output_scale * GRAYSCALE_RANGE) != 1) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model output scale to be 1/255!"));
-    //     }
-
-    //     if (params->output_zero_point != 0) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model output zero point to be 0!"));
-    //     }
-    // }
-
-    // if (params->output_datatype == LIBTF_DATATYPE_INT8) {
-    //     if (fast_roundf(params->output_scale * GRAYSCALE_RANGE) != 1) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model output scale to be 1/255!"));
-    //     }
-
-    //     if (params->output_zero_point != -GRAYSCALE_MID) {
-    //         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Expected model output zero point to be -128!"));
-    //     }
-    // }
-
-    int shift = (params->output_datatype == LIBTF_DATATYPE_INT8) ? GRAYSCALE_MID : 0;
-
     arg->out = mp_obj_new_list(params->output_channels, NULL);
+    mp_obj_t *items = ((mp_obj_list_t *) arg->out)->items;
+    float output_s = params->output_scale;
+    int output_zp = params->output_zero_point;
+    int w = params->output_width;
+    int h = params->output_height;
 
     for (int i = 0, ii = params->output_channels; i < ii; i++) {
-
         image_t img = {
-            .w = params->output_width,
-            .h = params->output_height,
+            .w = w,
+            .h = h,
             .pixfmt = PIXFORMAT_GRAYSCALE,
-            .pixels = xalloc(params->output_width * params->output_height * sizeof(uint8_t))
+            .pixels = xalloc(w * h * sizeof(uint8_t))
         };
 
-        ((mp_obj_list_t *) arg->out)->items[i] = py_image_from_struct(&img);
+        items[i] = py_image_from_struct(&img);
 
-        for (int y = 0, yy = params->output_height, xx = params->output_width; y < yy; y++) {
+        for (int y = 0, yy = h, xx = w; y < yy; y++) {
             int row = y * xx * ii;
             uint8_t *row_ptr = IMAGE_COMPUTE_GRAYSCALE_PIXEL_ROW_PTR(&img, y);
 
-            for (int x = 0; x < xx; x++) {
-                int col = x * ii;
-
-                if (params->output_datatype == LIBTF_DATATYPE_FLOAT) {
+            if (params->output_datatype == LIBTF_DATATYPE_UINT8) {
+                for (int x = 0; x < xx; x++) {
                     IMAGE_PUT_GRAYSCALE_PIXEL_FAST(row_ptr, x,
-                        ((float *) model_output)[row + col + i] * GRAYSCALE_RANGE);
-                } else {
+                        (((uint8_t *) model_output)[row + (x * ii) + i] - output_zp) * output_s);
+                }
+            } else if (params->output_datatype == LIBTF_DATATYPE_INT8) {
+                for (int x = 0; x < xx; x++) {
                     IMAGE_PUT_GRAYSCALE_PIXEL_FAST(row_ptr, x,
-                        ((uint8_t *) model_output)[row + col + i] ^ shift);
+                        (((int8_t *) model_output)[row + (x * ii) + i] - output_zp) * output_s);
+                }
+            } else {
+                for (int x = 0; x < xx; x++) {
+                    IMAGE_PUT_GRAYSCALE_PIXEL_FAST(row_ptr, x,
+                        ((float *) model_output)[row + (x * ii) + i] * GRAYSCALE_RANGE);
                 }
             }
         }
