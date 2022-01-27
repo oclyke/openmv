@@ -25,10 +25,27 @@
 #include "py/mphal.h"
 #endif
 
-#define FB_ALLOC_PADDING (1024)
+const uint8_t ucMirror[256] =
+     {0, 128, 64, 192, 32, 160, 96, 224, 16, 144, 80, 208, 48, 176, 112, 240,
+      8, 136, 72, 200, 40, 168, 104, 232, 24, 152, 88, 216, 56, 184, 120, 248,
+      4, 132, 68, 196, 36, 164, 100, 228, 20, 148, 84, 212, 52, 180, 116, 244,
+      12, 140, 76, 204, 44, 172, 108, 236, 28, 156, 92, 220, 60, 188, 124, 252,
+      2, 130, 66, 194, 34, 162, 98, 226, 18, 146, 82, 210, 50, 178, 114, 242,
+      10, 138, 74, 202, 42, 170, 106, 234, 26, 154, 90, 218, 58, 186, 122, 250,
+      6, 134, 70, 198, 38, 166, 102, 230, 22, 150, 86, 214, 54, 182, 118, 246,
+      14, 142, 78, 206, 46, 174, 110, 238, 30, 158, 94, 222, 62, 190, 126, 254,
+      1, 129, 65, 193, 33, 161, 97, 225, 17, 145, 81, 209, 49, 177, 113, 241,
+      9, 137, 73, 201, 41, 169, 105, 233, 25, 153, 89, 217, 57, 185, 121, 249,
+      5, 133, 69, 197, 37, 165, 101, 229, 21, 149, 85, 213, 53, 181, 117, 245,
+      13, 141, 77, 205, 45, 173, 109, 237, 29, 157, 93, 221, 61, 189, 125, 253,
+      3, 131, 67, 195, 35, 163, 99, 227, 19, 147, 83, 211, 51, 179, 115, 243,
+      11, 139, 75, 203, 43, 171, 107, 235, 27, 155, 91, 219, 59, 187, 123, 251,
+      7, 135, 71, 199, 39, 167, 103, 231, 23, 151, 87, 215, 55, 183, 119, 247,
+      15, 143, 79, 207, 47, 175, 111, 239, 31, 159, 95, 223, 63, 191, 127, 255};
 
 bool png_compress(image_t *src, image_t *dst)
 {
+uint8_t *pTemp;
 #if (TIME_PNG==1)
     mp_uint_t start = mp_hal_ticks_ms();
 #endif
@@ -37,7 +54,7 @@ bool png_compress(image_t *src, image_t *dst)
     // by the caller. We have to alloc this memory for all cases if we return from the method.
     if (!dst->data) {
         uint32_t avail = fb_avail();
-        uint32_t space = sizeof(PNGIMAGE) + FB_ALLOC_PADDING;
+        uint32_t space = sizeof(PNGIMAGE) + (src->w * 4) + 1024;
 
         if (avail < space) {
             fb_alloc_fail();
@@ -50,12 +67,11 @@ bool png_compress(image_t *src, image_t *dst)
     if (src->is_compressed) {
         return true;
     }
-
+    pTemp = (uint8_t *)fb_alloc(src->w*4, FB_ALLOC_NO_HINT);
     PNGIMAGE *pPNG = (PNGIMAGE *) fb_alloc(sizeof(PNGIMAGE), FB_ALLOC_NO_HINT);
     memset(pPNG, 0, sizeof(PNGIMAGE));
 
     int rc, y, iPitch = 0;
-    uint8_t *pPixels;
     const uint8_t pBinaryPalette[] = {0,0,0,0xff,0xff,0xff};
 
     pPNG->iTransparent = -1; // no transparent color
@@ -83,17 +99,17 @@ bool png_compress(image_t *src, image_t *dst)
             pPNG->ucPixelType = PNG_PIXEL_GRAYSCALE;
             break;
         case PIXFORMAT_RGB565:
-            pPNG->ucBpp = 8;
+            pPNG->ucBpp = 24;
             iPitch = src->w * 2;
             pPNG->ucPixelType = PNG_PIXEL_TRUECOLOR;
             break;
         case PIXFORMAT_YUV_ANY:
-            pPNG->ucBpp = 8;
+            pPNG->ucBpp = 24;
             iPitch = src->w;
             pPNG->ucPixelType = PNG_PIXEL_TRUECOLOR;
             break;
         case PIXFORMAT_BAYER_ANY:
-            pPNG->ucBpp = 8;
+            pPNG->ucBpp = 24;
             iPitch = src->w;
             pPNG->ucPixelType = PNG_PIXEL_TRUECOLOR;
             break;
@@ -102,19 +118,38 @@ bool png_compress(image_t *src, image_t *dst)
     // Encode the image a line at a time
     rc = PNG_SUCCESS;
     for (y = 0; y < src->h && rc == PNG_SUCCESS; y++) {
-        pPixels = &src->data[y * iPitch];
-        rc = PNGAddLine(pPNG, pPixels, pPNG->y);
-        pPNG->y++;
-    }
-
+        uint16_t us, *pPixels;
+        uint8_t *s, *d = pTemp;
+        pPixels = (uint16_t *)&src->data[y * iPitch];
+        // Convert the input format into one of the supported PNG pixel formats
+        switch (src->pixfmt) {
+            case PIXFORMAT_GRAYSCALE:
+                 memcpy(pTemp, pPixels, iPitch);
+                 break;
+            case PIXFORMAT_BINARY:
+                s = (uint8_t *)pPixels;
+                for (int x=0; x<iPitch; x++) {
+                    *d++ = ucMirror[*s++];
+                }
+                break;
+            case PIXFORMAT_RGB565:
+                for (int x=0; x<src->w; x++) {
+                    us = *pPixels++;
+                    *d++ = (uint8_t)(((us >> 8) & 0xf8) | (us >> 13)); // red
+                    *d++ = (uint8_t)(((us >> 3) & 0xfc) | ((us >> 9) && 0x3)); // green
+                    *d++ = (uint8_t)(((us & 0x1f) << 3) | ((us & 0x1c) >> 2)); // blue
+                }
+                break;
+        } // switch on format
+        rc = PNGAddLine(pPNG, pTemp, y);
+    } // for y
     fb_free(); // Free PNGIMAGE structure
 
-    dst->size = pPNG->iCompressedSize; // output file size
+    dst->size = pPNG->iDataSize; // output file size
 
 #if (TIME_PNG==1)
     printf("time: %lums\n", mp_hal_ticks_ms() - start);
 #endif
-
     return false;
 }
 
@@ -282,7 +317,9 @@ void png_callback(PNGDRAW *pDraw)
                 uint8_t *pPal = pDraw->pPalette;
                 uint32_t pixel;
                 uint8_t c0, c1, uc, ucOut, ucMask, *s, *d, *p;
-                d = (uint8_t *)dst->data + (pDraw->y * pDraw->iWidth);
+                const int iPitch = IMAGE_BINARY_LINE_LEN_BYTES(dst);
+                d = (uint8_t *)dst->data;
+                d += pDraw->y * iPitch; // starting offset
                 s = pDraw->pPixels;
                 switch (pDraw->iBpp) {
                     case 1:
@@ -457,11 +494,14 @@ void png_read(image_t *img, const char *path)
 void png_write(image_t *img, const char *path)
 {
     FIL fp;
+printf("Entering png_write\n");
     file_write_open(&fp, path);
     if (img->pixfmt == PIXFORMAT_PNG) {
+printf("pixfmt == PIXFORMAT_PNG\n");
         write_data(&fp, img->pixels, img->size);
     } else {
         image_t out = { .w=img->w, .h=img->h, .pixfmt=PIXFORMAT_PNG, .size=0, .pixels=NULL }; // alloc in png compress
+printf("About to call png_compress\n");
         png_compress(img, &out);
         write_data(&fp, out.pixels, out.size);
         fb_free(); // frees alloc in png_compress()
