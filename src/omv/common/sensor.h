@@ -23,6 +23,8 @@
 #define HM0XX0_SLV_ADDR         (0x48)
 #define GC2145_SLV_ADDR         (0x78)
 #define FROGEYE2020_SLV_ADDR    (0x6E)
+#define ISX_SLV_ADDR            (0x1A)
+#define ISX_FPGA_ADDR           (0x1B)
 
 // Chip ID Registers
 #define OV5640_CHIP_ID          (0x300A)
@@ -57,6 +59,8 @@
 #define GC2145_ID               (0x21)
 #define PAJ6100_ID              (0x6100)
 #define FROGEYE2020_ID          (0x2020)
+#define ISX012_ID               (0x1A12)
+#define ISX019_ID               (0x1A19)
 
 typedef enum {
     FRAMESIZE_INVALID = 0,
@@ -97,6 +101,8 @@ typedef enum {
     FRAMESIZE_SXGA,     // 1280x1024
     FRAMESIZE_SXGAM,    // 1280x960
     FRAMESIZE_UXGA,     // 1600x1200
+    FRAMESIZE_SD,       // 480x360
+    FRAMESIZE_NHD,      // 640x480
     FRAMESIZE_HD,       // 1280x720
     FRAMESIZE_FHD,      // 1920x1080
     FRAMESIZE_QHD,      // 2560x1440

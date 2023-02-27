@@ -42,6 +42,8 @@
 #define OMV_ENABLE_HM01B0       (0)
 #define OMV_ENABLE_PAJ6100      (0)
 #define OMV_ENABLE_FROGEYE2020  (0)
+#define OMV_ENABLE_ISX012       (0)
+#define OMV_ENABLE_ISX019       (0)
 
 // Set which OV767x sensor is used
 #define OMV_OV7670_VERSION      (75)

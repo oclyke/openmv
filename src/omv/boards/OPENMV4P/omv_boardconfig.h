@@ -62,6 +62,8 @@
 #define OMV_ENABLE_HM01B0       (0)
 #define OMV_ENABLE_PAJ6100      (1)
 #define OMV_ENABLE_FROGEYE2020  (1)
+#define OMV_ENABLE_ISX012       (0)
+#define OMV_ENABLE_ISX019       (1)
 
 // Enable sensor features
 #define OMV_ENABLE_OV5640_AF    (0)

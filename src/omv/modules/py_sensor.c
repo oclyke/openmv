@@ -1056,6 +1056,8 @@ STATIC const mp_map_elem_t globals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_SXGA),                MP_OBJ_NEW_SMALL_INT(FRAMESIZE_SXGA)},     /* 1280x1024 */
     { MP_OBJ_NEW_QSTR(MP_QSTR_SXGAM),               MP_OBJ_NEW_SMALL_INT(FRAMESIZE_SXGAM)},    /* 1280x960  */
     { MP_OBJ_NEW_QSTR(MP_QSTR_UXGA),                MP_OBJ_NEW_SMALL_INT(FRAMESIZE_UXGA)},     /* 1600x1200 */
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SD),                  MP_OBJ_NEW_SMALL_INT(FRAMESIZE_SD)},       /* 480x360   */
+    { MP_OBJ_NEW_QSTR(MP_QSTR_NHD),                 MP_OBJ_NEW_SMALL_INT(FRAMESIZE_NHD)},      /* 640x360   */
     { MP_OBJ_NEW_QSTR(MP_QSTR_HD),                  MP_OBJ_NEW_SMALL_INT(FRAMESIZE_HD)},       /* 1280x720  */
     { MP_OBJ_NEW_QSTR(MP_QSTR_FHD),                 MP_OBJ_NEW_SMALL_INT(FRAMESIZE_FHD)},      /* 1920x1080 */
     { MP_OBJ_NEW_QSTR(MP_QSTR_QHD),                 MP_OBJ_NEW_SMALL_INT(FRAMESIZE_QHD)},      /* 2560x1440 */

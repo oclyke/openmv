@@ -43,6 +43,8 @@ extern unsigned char *OMV_UNIQUE_ID_ADDR;
 #define OMV_ENABLE_MT9V0XX      (0)
 #define OMV_ENABLE_LEPTON       (0)
 #define OMV_ENABLE_HM01B0       (0)
+#define OMV_ENABLE_ISX012       (0)
+#define OMV_ENABLE_ISX019       (0)
 
 // Set which OV767x sensor is used
 #define OMV_OV7670_VERSION      (70)

@@ -29,6 +29,8 @@
 #include "hm0360.h"
 #include "paj6100.h"
 #include "frogeye2020.h"
+#include "isx012.h"
+#include "isx019.h"
 #include "gc2145.h"
 #include "framebuffer.h"
 #include "omv_boardconfig.h"
@@ -81,6 +83,8 @@ const int resolution[][2] = {
     {1280, 1024},    /* SXGA      */
     {1280, 960 },    /* SXGAM     */
     {1600, 1200},    /* UXGA      */
+    {480,  360 },    /* SD        */
+    {640,  360 },    /* NHD       */
     {1280, 720 },    /* HD        */
     {1920, 1080},    /* FHD       */
     {2560, 1440},    /* QHD       */
@@ -294,6 +298,18 @@ int sensor_probe_init(uint32_t bus_id, uint32_t bus_speed)
             break;
         #endif // (OMV_ENABLE_FROGEYE2020 == 1)
 
+        #if (OMV_ENABLE_ISX012 == 1 || OMV_ENABLE_ISX019 == 1)
+        case ISX_SLV_ADDR:
+        {
+            uint8_t list[2];
+            sensor.chip_id_w = ISX012_ID;
+            if ((cambus_scan(&sensor.bus, list, 2) >= 2) && (list[1] == ISX_FPGA_ADDR)) {
+                sensor.chip_id_w = ISX019_ID;
+            }
+            break;
+        }
+        #endif // (OMV_ENABLE_ISX012 == 1 || OMV_ENABLE_ISX019 == 1)
+
         #if (OMV_ENABLE_PAJ6100 == 1)
         case 0:
             if (paj6100_detect(&sensor)) {
@@ -425,15 +441,6 @@ int sensor_probe_init(uint32_t bus_id, uint32_t bus_speed)
             break;
         #endif //(OMV_ENABLE_GC2145 == 1)
 
-        #if (OMV_ENABLE_PAJ6100 == 1)
-        case PAJ6100_ID:
-            if (sensor_set_xclk_frequency(PAJ6100_XCLK_FREQ) != 0) {
-                return SENSOR_ERROR_TIM_INIT_FAILED;
-            }
-            init_ret = paj6100_init(&sensor);
-            break;
-        #endif // (OMV_ENABLE_PAJ6100 == 1)
-
         #if (OMV_ENABLE_FROGEYE2020 == 1)
         case FROGEYE2020_ID:
             if (sensor_set_xclk_frequency(FROGEYE2020_XCLK_FREQ) != 0) {
@@ -442,6 +449,33 @@ int sensor_probe_init(uint32_t bus_id, uint32_t bus_speed)
             init_ret = frogeye2020_init(&sensor);
             break;
         #endif // (OMV_ENABLE_FROGEYE2020 == 1)
+
+        #if (OMV_ENABLE_ISX012 == 1)
+        case ISX012_ID:
+            if (sensor_set_xclk_frequency(ISX012_XCLK_FREQ) != 0) {
+                return SENSOR_ERROR_TIM_INIT_FAILED;
+            }
+            init_ret = omv_isx012_init(&sensor);
+            break;
+        #endif // (OMV_ENABLE_ISX012 == 1)
+
+        #if (OMV_ENABLE_ISX019 == 1)
+        case ISX019_ID:
+            if (sensor_set_xclk_frequency(ISX019_XCLK_FREQ) != 0) {
+                return SENSOR_ERROR_TIM_INIT_FAILED;
+            }
+            init_ret = omv_isx019_init(&sensor);
+            break;
+        #endif // (OMV_ENABLE_ISX019 == 1)
+
+        #if (OMV_ENABLE_PAJ6100 == 1)
+        case PAJ6100_ID:
+            if (sensor_set_xclk_frequency(PAJ6100_XCLK_FREQ) != 0) {
+                return SENSOR_ERROR_TIM_INIT_FAILED;
+            }
+            init_ret = paj6100_init(&sensor);
+            break;
+        #endif // (OMV_ENABLE_PAJ6100 == 1)
 
         default:
             return SENSOR_ERROR_ISC_UNSUPPORTED;
