@@ -166,8 +166,8 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/sensors/,   \
 	gc2145.o                    \
 	paj6100.o                   \
 	frogeye2020.o               \
-	isx012.o					\
-	isx019.o					\
+	isx012.o                    \
+	isx019.o                    \
    )
 
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/imlib/, \
