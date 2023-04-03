@@ -51,6 +51,14 @@ _ram_end    = ORIGIN(OMV_MAIN_MEMORY) + LENGTH(OMV_MAIN_MEMORY);
 _ffs_cache          = ORIGIN(OMV_FFS_MEMORY) + OMV_FFS_MEMORY_OFFSET;
 #endif
 
+#if defined(OMV_HEAP_MEMORY)
+#if !defined(OMV_HEAP_MEMORY_OFFSET)
+#define OMV_HEAP_MEMORY_OFFSET          (0)
+#endif
+_heap_start           = ORIGIN(OMV_HEAP_MEMORY) + OMV_HEAP_MEMORY_OFFSET;
+_heap_end             = _heap_start + _heap_size;
+#endif
+
 #if defined(OMV_JPEG_MEMORY)
 #if !defined(OMV_JPEG_MEMORY_OFFSET)
 #define OMV_JPEG_MEMORY_OFFSET          (0)
@@ -202,17 +210,6 @@ SECTIONS
     *(COMMON)
     . = ALIGN(4);
     _ebss = .;          // define a global symbol at bss end
-  } >OMV_MAIN_MEMORY
-
-  ._heap (NOLOAD) :
-  {
-    . = ALIGN(4);
-    _heap_start = .;
-    . = . + _heap_size;
-
-    . = ALIGN(4);
-    _heap_end  = .;
-
   } >OMV_MAIN_MEMORY
 
   /* Make sure there is enough ram for the stack */
