@@ -337,6 +337,14 @@ soft_reset:
     led_state(LED_GREEN, 1);
     led_state(LED_BLUE, 1);
 
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.Pull      = GPIO_NOPULL;
+    GPIO_InitStructure.Mode      = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStructure.Speed     = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStructure.Pin       = GPIO_PIN_12;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+
     machine_init();
 
     #if MICROPY_PY_THREAD
