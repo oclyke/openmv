@@ -52,7 +52,9 @@ float OMV_ATTR_ALWAYS_INLINE fast_sqrtf(float x) {
     return x;
 }
 
-int OMV_ATTR_ALWAYS_INLINE fast_floorf(float x) {
+#if (__ARM_FP > 4)
+int OMV_ATTR_ALWAYS_INLINE fast_floorf(float x)
+{
     int i;
     asm volatile (
         "vcvtm.S32.f32  %[r], %[x]\n"
@@ -69,6 +71,28 @@ int OMV_ATTR_ALWAYS_INLINE fast_ceilf(float x) {
         : [x] "t"  (x));
     return i;
 }
+#else
+int OMV_ATTR_ALWAYS_INLINE fast_floorf(float x)
+{
+    int i;
+    asm volatile (
+            "vcvt.S32.f32  %[r], %[x]\n"
+            : [r] "=t" (i)
+            : [x] "t"  (x));
+    return i;
+}
+
+int OMV_ATTR_ALWAYS_INLINE fast_ceilf(float x)
+{
+    int i;
+    x += 0.9999f;
+    asm volatile (
+            "vcvt.S32.f32  %[r], %[x]\n"
+            : [r] "=t" (i)
+            : [x] "t"  (x));
+    return i;
+}
+#endif
 
 int OMV_ATTR_ALWAYS_INLINE fast_roundf(float x) {
     int i;
