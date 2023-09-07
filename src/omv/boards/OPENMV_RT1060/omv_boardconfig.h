@@ -58,6 +58,11 @@
 #define OMV_ENABLE_HM01B0          (0)
 #define OMV_ENABLE_PAJ6100         (1)
 #define OMV_ENABLE_FROGEYE2020     (1)
+#define OMV_ENABLE_FIR_MLX90621    (1)
+#define OMV_ENABLE_FIR_MLX90640    (1)
+#define OMV_ENABLE_FIR_MLX90641    (1)
+#define OMV_ENABLE_FIR_AMG8833     (1)
+#define OMV_ENABLE_FIR_LEPTON      (1)
 
 // Enable WiFi debug
 #define OMV_ENABLE_WIFIDBG         (0)
@@ -117,7 +122,6 @@
 // TODO remove
 #define OMV_MSC_BUF_SIZE           (2K)         // USB MSC bot data
 #define OMV_VFS_BUF_SIZE           (1K)         // VFS sturct + FATFS file buffer (624 bytes)
-#define OMV_FIR_LEPTON_BUF_SIZE    (1K)         // FIR Lepton Packet Double Buffer (328 bytes)
 #define OMV_JPEG_BUF_SIZE          (1024 * 1024)  // IDE JPEG buffer (header + data).
 
 // Memory configuration.
@@ -148,59 +152,96 @@
 #define OMV_FLASH_FFS_ORIGIN       0x60400000
 #define OMV_FLASH_FFS_LENGTH       0x00400000
 
-// ISC I2C configuration.
-#define ISC_I2C_ID                 (1)
-#define ISC_I2C_SPEED              (OMV_I2C_SPEED_STANDARD)
+// Main image sensor I2C bus
+#define ISC_I2C_ID                      (1)
+#define ISC_I2C_SPEED                   (OMV_I2C_SPEED_STANDARD)
 
-// FIR I2C configuration.
-#define FIR_I2C_ID                 (4)
-#define FIR_I2C_SPEED              (OMV_I2C_SPEED_FULL)
+// Thermal image sensor I2C bus
+#define FIR_I2C_ID                      (4)
+#define FIR_I2C_SPEED                   (OMV_I2C_SPEED_FULL)
 
-// ISC SPI configuration.
-#define ISC_SPI_ID                 (4)
-#define ISC_SPI_BAUDRATE           (20000000)
-
-// Physical I2C buses.
-// LPI2C1
-#define LPI2C1_ID                  (1)
-#define LPI2C1_SCL_PIN             (&omv_pin_LPI2C1_SCL)
-#define LPI2C1_SDA_PIN             (&omv_pin_LPI2C1_SDA)
-
-// LPI2C4
-#define LPI2C4_ID                  (4)
-#define LPI2C4_SCL_PIN             (&omv_pin_LPI2C4_SCL)
-#define LPI2C4_SDA_PIN             (&omv_pin_LPI2C4_SDA)
-
-// Physical SPI buses.
-// LPSPI4
-#define LPSPI4_ID                  (4)
-#define LPSPI4_SCLK_PIN            (&omv_pin_LPSPI4_SCLK)
-#define LPSPI4_MISO_PIN            (&omv_pin_LPSPI4_MISO)
-#define LPSPI4_MOSI_PIN            (&omv_pin_LPSPI4_MOSI)
-#define LPSPI4_SSEL_PIN            (&omv_pin_LPSPI4_SSEL)
-
-#define LPSPI4_DMA                 (DMA0)
-#define LPSPI4_DMA_MUX             (DMAMUX)
-#define LPSPI4_DMA_TX_CHANNEL      (1U)
-#define LPSPI4_DMA_RX_CHANNEL      (0U)
+// Main image sensor SPI bus
+#define ISC_SPI_ID                      (4)
 
 // Camera interface configuration.
-#define OMV_CSI_BASE               (CSI)
+#define OMV_CSI_BASE                    (CSI)
 
-#define DCMI_RESET_PIN             (&omv_pin_DCMI_RESET)
-#define DCMI_POWER_PIN             (&omv_pin_DCMI_POWER)
-//#define DCMI_FSYNC_PIN              (&omv_pin_DCMI_FSYNC)
+#define DCMI_RESET_PIN                  (&omv_pin_DCMI_RESET)
+#define DCMI_POWER_PIN                  (&omv_pin_DCMI_POWER)
+// #define DCMI_FSYNC_PIN                  (&omv_pin_DCMI_FSYNC)
 
-#define DCMI_D0_PIN                (&omv_pin_DCMI_D0)
-#define DCMI_D1_PIN                (&omv_pin_DCMI_D1)
-#define DCMI_D2_PIN                (&omv_pin_DCMI_D2)
-#define DCMI_D3_PIN                (&omv_pin_DCMI_D3)
-#define DCMI_D4_PIN                (&omv_pin_DCMI_D4)
-#define DCMI_D5_PIN                (&omv_pin_DCMI_D5)
-#define DCMI_D6_PIN                (&omv_pin_DCMI_D6)
-#define DCMI_D7_PIN                (&omv_pin_DCMI_D7)
-#define DCMI_MCLK_PIN              (&omv_pin_DCMI_MCLK)
-#define DCMI_HSYNC_PIN             (&omv_pin_DCMI_HSYNC)
-#define DCMI_VSYNC_PIN             (&omv_pin_DCMI_VSYNC)
-#define DCMI_PXCLK_PIN             (&omv_pin_DCMI_PXCLK)
+#define DCMI_D0_PIN                     (&omv_pin_DCMI_D0)
+#define DCMI_D1_PIN                     (&omv_pin_DCMI_D1)
+#define DCMI_D2_PIN                     (&omv_pin_DCMI_D2)
+#define DCMI_D3_PIN                     (&omv_pin_DCMI_D3)
+#define DCMI_D4_PIN                     (&omv_pin_DCMI_D4)
+#define DCMI_D5_PIN                     (&omv_pin_DCMI_D5)
+#define DCMI_D6_PIN                     (&omv_pin_DCMI_D6)
+#define DCMI_D7_PIN                     (&omv_pin_DCMI_D7)
+
+#define DCMI_MCLK_PIN                   (&omv_pin_DCMI_MCLK)
+#define DCMI_HSYNC_PIN                  (&omv_pin_DCMI_HSYNC)
+#define DCMI_VSYNC_PIN                  (&omv_pin_DCMI_VSYNC)
+#define DCMI_PXCLK_PIN                  (&omv_pin_DCMI_PXCLK)
+
+// Physical I2C buses.
+
+// LPI2C1
+#define LPI2C1_ID                       (1)
+#define LPI2C1_SCL_PIN                  (&omv_pin_LPI2C1_SCL)
+#define LPI2C1_SDA_PIN                  (&omv_pin_LPI2C1_SDA)
+
+// LPI2C2
+#define LPI2C2_ID                       (2)
+#define LPI2C2_SCL_PIN                  (&omv_pin_LPI2C2_SCL)
+#define LPI2C2_SDA_PIN                  (&omv_pin_LPI2C2_SDA)
+
+// LPI2C4
+#define LPI2C4_ID                       (4)
+#define LPI2C4_SCL_PIN                  (&omv_pin_LPI2C4_SCL)
+#define LPI2C4_SDA_PIN                  (&omv_pin_LPI2C4_SDA)
+
+// Physical SPI buses.
+
+// LPSPI3
+#define LPSPI3_ID                       (3)
+#define LPSPI3_SCLK_PIN                 (&omv_pin_LPSPI3_SCLK)
+#define LPSPI3_MISO_PIN                 (&omv_pin_LPSPI3_MISO)
+#define LPSPI3_MOSI_PIN                 (&omv_pin_LPSPI3_MOSI)
+#define LPSPI3_SSEL_PIN                 (&omv_pin_LPSPI3_SSEL)
+
+// LPSPI4
+#define LPSPI4_ID                       (4)
+#define LPSPI4_SCLK_PIN                 (&omv_pin_LPSPI4_SCLK)
+#define LPSPI4_MISO_PIN                 (&omv_pin_LPSPI4_MISO)
+#define LPSPI4_MOSI_PIN                 (&omv_pin_LPSPI4_MOSI)
+#define LPSPI4_SSEL_PIN                 (&omv_pin_LPSPI4_SSEL)
+
+// SPI LCD Interface
+#define OMV_SPI_LCD_SPI_BUS             (LPSPI3_ID)
+#define OMV_SPI_LCD_MOSI_PIN            (&omv_pin_LPSPI3_MOSI)
+#define OMV_SPI_LCD_MISO_PIN            (&omv_pin_LPSPI3_MISO)
+#define OMV_SPI_LCD_SCLK_PIN            (&omv_pin_LPSPI3_SCLK)
+#define OMV_SPI_LCD_SSEL_PIN            (&omv_pin_LPSPI3_GPIO)
+
+#define OMV_SPI_LCD_RS_PIN              (&omv_pin_P8_GPIO)
+#define OMV_SPI_LCD_BL_PIN              (&omv_pin_P6_GPIO)
+#define OMV_SPI_LCD_RST_PIN             (&omv_pin_P7_GPIO)
+
+#define OMV_SPI_LCD_DEF_TRIPLE_BUF      (true)
+
+#define OMV_SPI_LCD_RX_CLK_DIV          (8)
+
+// FIR Lepton
+#define OMV_FIR_LEPTON_I2C_BUS          (FIR_I2C_ID)
+#define OMV_FIR_LEPTON_I2C_BUS_SPEED    (FIR_I2C_SPEED)
+
+#define OMV_FIR_LEPTON_SPI_BUS          (LPSPI3_ID)
+#define OMV_FIR_LEPTON_MOSI_PIN         (&omv_pin_LPSPI3_MOSI)
+#define OMV_FIR_LEPTON_MISO_PIN         (&omv_pin_LPSPI3_MISO)
+#define OMV_FIR_LEPTON_SCLK_PIN         (&omv_pin_LPSPI3_SCLK)
+#define OMV_FIR_LEPTON_SSEL_PIN         (&omv_pin_LPSPI3_GPIO)
+
+#define OMV_FIR_LEPTON_RX_CLK_DIV       (8)
+
 #endif //__OMV_BOARDCONFIG_H__

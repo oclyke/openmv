@@ -20,6 +20,7 @@
 #include "fsl_usb_phy.h"
 #include "fsl_device_registers.h"
 #include CLOCK_CONFIG_H
+#include "dma_manager.h"
 #include "irq.h"
 
 #include "omv_boardconfig.h"
@@ -87,10 +88,7 @@ void mimxrt_hal_init() {
                          );
     #endif
 
-    // Confgure and enable EDMA
-    edma_config_t edma_config = {0};
-    EDMA_GetDefaultConfig(&edma_config);
-    EDMA_Init(DMA0, &edma_config);
+    dma_init();
 }
 
 void mimxrt_hal_bootloader() {
@@ -179,7 +177,7 @@ int mimxrt_hal_i2c_init(uint32_t bus_id) {
     return 0;
 }
 
-int mimxrt_hal_spi_init(uint32_t bus_id, bool nss_enable, uint32_t nss_pol) {
+int mimxrt_hal_spi_init_deinit(uint32_t bus_id, bool nss_enable, uint32_t nss_pol, bool init) {
     typedef struct {
         omv_gpio_t sclk_pin;
         omv_gpio_t miso_pin;
@@ -198,6 +196,22 @@ int mimxrt_hal_spi_init(uint32_t bus_id, bool nss_enable, uint32_t nss_pol) {
             break;
         }
         #endif
+        #if defined(LPSPI2_ID)
+        case LPSPI2_ID: {
+            spi_pins = (spi_pins_t) {
+                LPSPI2_SCLK_PIN, LPSPI2_MISO_PIN, LPSPI2_MOSI_PIN, LPSPI2_SSEL_PIN
+            };
+            break;
+        }
+        #endif
+        #if defined(LPSPI3_ID)
+        case LPSPI3_ID: {
+            spi_pins = (spi_pins_t) {
+                LPSPI3_SCLK_PIN, LPSPI3_MISO_PIN, LPSPI3_MOSI_PIN, LPSPI3_SSEL_PIN
+            };
+            break;
+        }
+        #endif
         #if defined(LPSPI4_ID)
         case LPSPI4_ID: {
             spi_pins = (spi_pins_t) {
@@ -210,18 +224,25 @@ int mimxrt_hal_spi_init(uint32_t bus_id, bool nss_enable, uint32_t nss_pol) {
             return -1;
     }
 
-    omv_gpio_config(spi_pins.sclk_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
-    omv_gpio_config(spi_pins.miso_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
-    omv_gpio_config(spi_pins.mosi_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
-    if (nss_enable) {
-        omv_gpio_config(spi_pins.ssel_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_UP, OMV_GPIO_SPEED_MED, -1);
-    } else {
-        omv_gpio_config(spi_pins.ssel_pin, OMV_GPIO_MODE_OUTPUT, OMV_GPIO_PULL_UP, OMV_GPIO_SPEED_MED, -1);
-        if (nss_pol == OMV_SPI_NSS_LOW) {
-            omv_gpio_write(spi_pins.ssel_pin, 1);
+    if (init) {
+        omv_gpio_config(spi_pins.sclk_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
+        omv_gpio_config(spi_pins.miso_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
+        omv_gpio_config(spi_pins.mosi_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_NONE, OMV_GPIO_SPEED_MED, -1);
+        if (nss_enable) {
+            omv_gpio_config(spi_pins.ssel_pin, OMV_GPIO_MODE_ALT, OMV_GPIO_PULL_UP, OMV_GPIO_SPEED_MED, -1);
         } else {
-            omv_gpio_write(spi_pins.ssel_pin, 0);
+            omv_gpio_config(spi_pins.ssel_pin, OMV_GPIO_MODE_OUTPUT, OMV_GPIO_PULL_UP, OMV_GPIO_SPEED_MED, 5);
+            if (nss_pol == OMV_SPI_NSS_LOW) {
+                omv_gpio_write(spi_pins.ssel_pin, 1);
+            } else {
+                omv_gpio_write(spi_pins.ssel_pin, 0);
+            }
         }
+    } else {
+        omv_gpio_deinit(spi_pins.sclk_pin);
+        omv_gpio_deinit(spi_pins.miso_pin);
+        omv_gpio_deinit(spi_pins.mosi_pin);
+        omv_gpio_deinit(spi_pins.ssel_pin);
     }
     return 0;
 }
