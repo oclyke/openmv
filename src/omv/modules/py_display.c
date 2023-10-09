@@ -105,6 +105,7 @@ STATIC mp_obj_t py_display_backlight(uint n_args, const mp_obj_t *args) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(py_display_backlight_obj, 1, 2, py_display_backlight);
 
 STATIC mp_obj_t py_display_write(uint n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+    fb_alloc_mark();
     py_display_obj_t *self = MP_OBJ_TO_PTR(args[0]);
     image_t *arg_img = py_image_cobj(args[1]);
 
@@ -175,12 +176,11 @@ STATIC mp_obj_t py_display_write(uint n_args, const mp_obj_t *args, mp_map_t *kw
         mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("Vertical flip requires triple buffering!"));
     }
 
-    fb_alloc_mark();
     py_display_p_t *display_p = (py_display_p_t *) MP_OBJ_TYPE_GET_SLOT(self->base.type, protocol);
     display_p->write(self, arg_img, arg_x_off, arg_y_off, arg_x_scale, arg_y_scale, &arg_roi,
                      arg_rgb_channel, arg_alpha, color_palette, alpha_palette, hint);
-    fb_alloc_free_till_mark();
 
+    fb_alloc_free_till_mark();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(py_display_write_obj, 2, py_display_write);
