@@ -5,7 +5,11 @@
  *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
- * AP0202AT driver.
+ * AP0202AT driver library.
+ * The AP0202AT ISP is used in combination with other
+ * sensors. The methods provided in this file are
+ * applicable to the AP0202AT and may be used in
+ * combination with drivers for other sensors.
  */
 #include "omv_boardconfig.h"
 #if (OMV_ENABLE_AP0202AT == 1)
@@ -353,9 +357,11 @@ static int write_sensor_sequencer(sensor_t* sensor, uint16_t port_address, uint1
  *   to be blocking in order to limit the rate of polling.
  * 
  * @param sensor the sensor struct.
+ * @param timeout_ms the maximum time to wait for the
+ *   Doorbell Bit to clear in milliseconds.
  * @return int 0 on success, -1 on error.
  */
-static int poll_doorbell_bit(sensor_t *sensor) {
+static int poll_doorbell_bit(sensor_t *sensor, uint16_t timeout_ms) {
     int ret = 0;
     for (mp_uint_t start = mp_hal_ticks_ms();;) {
         uint16_t reg_data;
@@ -371,7 +377,7 @@ static int poll_doorbell_bit(sensor_t *sensor) {
         }
 
         // Return error if the timeout has elapsed.
-        if ((mp_hal_ticks_ms() - start) >= AP0202AT_HOST_COMMAND_POLL_TIMEOUT_MS) {
+        if ((mp_hal_ticks_ms() - start) >= timeout_ms) {
             return -1;
         }
     }
@@ -398,7 +404,7 @@ static int poll_doorbell_bit(sensor_t *sensor) {
 static int issue_host_command(sensor_t *sensor, uint16_t command) {
     int ret = 0;
 
-    if (poll_doorbell_bit(sensor) != 0) {
+    if (poll_doorbell_bit(sensor, AP0202AT_HOST_COMMAND_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
