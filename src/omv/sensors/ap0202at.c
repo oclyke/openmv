@@ -10,6 +10,11 @@
  * sensors. The methods provided in this file are
  * applicable to the AP0202AT and may be used in
  * combination with drivers for other sensors.
+ * 
+ * When calling AP0202AT methods it is expected that the
+ * sensor struct I2C bus and slave address target the ISP
+ * itself. The ISP communicates with the attached sensor
+ * on a separate I2C bus.
  */
 #include "omv_boardconfig.h"
 #if (OMV_ENABLE_AP0202AT == 1)
