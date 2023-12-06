@@ -47,6 +47,23 @@ static int delay_ms(uint32_t ms) {
 }
 
 /**
+ * @brief Get the address of a variable in the AP0202AT
+ *  given the page and offset.
+ * 
+ * @param address_out 
+ * @param page 
+ * @param offset 
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_variable_address(uint16_t* address_out, uint8_t page, uint8_t offset) {
+  int ret = 0;
+  if (address_out != NULL) {
+    *address_out = (0x8000 | ((page) << 10) | (offset));
+  }
+  return ret;
+}
+
+/**
  * @brief Read a register from the AP0202AT ISP.
  * @details Uses the two-wire interface to read a 16-bit
  *   wide register from the AP0202AT ISP.
