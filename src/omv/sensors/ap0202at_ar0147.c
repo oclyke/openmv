@@ -789,7 +789,7 @@ static int reset(sensor_t *sensor) {
     if (ret != 0) {
         return -1;
     }
-    if (sensor_id != AP0147_SENSOR_ID) {
+    if (sensor_id != AR0147_SENSOR_ID) {
         return -1;
     }
 
