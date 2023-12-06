@@ -12,7 +12,7 @@
 
 #include "openmv/src/omv/sensors/ap0202at.h"
 
-#define AP0147_SENSOR_ID ()
+#define AR0147_SENSOR_ID ()
 
 // Forward declarations.
 static const uint16_t patch_28d4_data[];
@@ -23,6 +23,25 @@ static const uint16_t patch_21d4_data[];
 static const uint16_t patch_37d4_data[];
 static const uint16_t patch_39d4_data[];
 static const uint16_t ar0147_sequencer_data[];
+
+/**
+ * @brief Blocking delay in milliseconds.
+ * 
+ * Relies on mp_hal_ticks_ms.
+ * 
+ * @param ms the number of milliseconds to delay.
+ * @return int 0 on success, -1 on error.
+ */
+static int delay_ms(uint32_t ms) {
+    int ret = 0;
+    mp_uint_t start = mp_hal_ticks_ms();
+
+    while ((mp_hal_ticks_ms() - start) < ms) {
+        // Do nothing.
+    }
+
+    return ret;
+}
 
 /**
  * @brief Installs the sensor register write workaround.
