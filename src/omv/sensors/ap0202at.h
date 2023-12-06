@@ -14,6 +14,9 @@
 // Range 24 to 30 MHz does not require PLL reconfiguration.
 #define AP0202AT_XCLK_FREQ    (24000000)
 
+// register and variable location
+int ap0202at_variable_address(uint16_t* address_out, uint8_t page, uint8_t offset);
+
 // register access
 int ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data);
 int ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t data);
