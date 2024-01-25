@@ -1,14 +1,14 @@
 /*
  * This file is part of the OpenMV project.
  *
- * Copyright (c) 2023 oclyke <oclyke@oclyke.dev>
+ * Copyright (c) 2023-2024 oclyke <oclyke@oclyke.dev>
  *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
  * AP0202AT register definitions.
  */
-#ifndef __REG_REGS_AP0202AT_H__
-#define __REG_REGS_AP0202AT_H__
+#ifndef __AP0202AT_REGS_H__
+#define __AP0202AT_REGS_H__
 
 // VARIABLE SHORTCUTS
 #define AP0202AT_VARIABLE(page, offset)                          (0x8000 | ((page) << 10) | (offset))
@@ -73,7 +73,8 @@
 
 // XDMA 
 #define AP0202AT_REG_ACCESS_CTL_STAT                              (0x0982)
-#define AP0202AT_PHYSICAL_ADDRESS_ACCESS                          (0x098A)
+#define AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS                      (0x098A)
+#define AP0202AT_REG_LOGICAL_ADDRESS_ACCESS                       (0x098E)
 
 // SENSOR MANAGER VARIABLES
 #define AP0202AT_VAR_SENSOR_MGR_MODE                              (AP0202AT_VARIABLE(0x13, 0x02))
@@ -90,4 +91,4 @@
 #define AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3                    (AP0202AT_VARIABLE(0x1F, 0x06))
 #define AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4                    (AP0202AT_VARIABLE(0x1F, 0x08))
 
-#endif // __REG_REGS_AP0202AT_H__
+#endif // __AP0202AT_REGS_H__

@@ -1,7 +1,7 @@
 /*
  * This file is part of the OpenMV project.
  *
- * Copyright (c) 2023 oclyke <oclyke@oclyke.dev>
+ * Copyright (c) 2023-2024 oclyke <oclyke@oclyke.dev>
  *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
@@ -210,6 +210,33 @@ int ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *data, uint16_t 
     return ret;
 }
 
+
+/**
+ * @brief Writes a burst of data to the AP0202AT ISP.
+ * @details The burst data format is very specific. It must
+ *  be a sequence of 16-bit words. The words are organized
+ *  into groups of 25 laid end-to-end. The last group may
+ *  be shorter than 25 words. The total number of words is
+ *  given in the data_len parameter.
+ * 
+ *  The first word of each group is the register address
+ *  at which the data will be written. The remaining 24
+ *  words are the data to be written. The register address
+ *  will auto-increment along with the data provided.
+ * 
+ *  This process will be repeated until all the groups of
+ *  data have been written. The last group may be shorter
+ *  than 25 words.
+ * 
+ * @param sensor the sensor struct.
+ * @param data pointer to the burst data.
+ * @param data_words the length of the burst data in words.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_write_patch(sensor_t* sensor, const uint16_t *data, uint16_t data_words) {
+    return ap0202at_write_reg_burst_addr_24(sensor, data, data_words);
+}
+
 /**
  * @brief Write a register in the sensor attached to the
  *  AP0202AT ISP.
@@ -271,7 +298,7 @@ int ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t addr, uint16_t data) {
  *  in words. 
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_write_sensor_sequencer(sensor_t* sensor, uint16_t port_address, uint16_t* sequencer_data, size_t sequencer_words) {
+int ap0202at_write_sensor_sequencer(sensor_t* sensor, uint16_t port_address, const uint16_t* sequencer_data, size_t sequencer_words) {
     size_t burst_words = 6;
     size_t num_burst = sequencer_words / burst_words;
     size_t leftover_words = sequencer_words % burst_words;
@@ -628,6 +655,8 @@ int ap0202at_sensor_discovery(sensor_t *sensor, uint16_t *sensor_id) {
     if (host_command_result == AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_RESP_NO_SENSOR) {
         return -1;
     }
+
+    // NOTE: figure out whether this is the fn to run when detecting the sensor
 
     if (sensor_id != NULL) {
         *sensor_id = host_command_result;
