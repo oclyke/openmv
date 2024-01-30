@@ -33,7 +33,7 @@ int ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t addr, uint16_t data);
 int ap0202at_write_sensor_sequencer(sensor_t *sensor, uint16_t port_address, const uint16_t* sequencer_data, size_t sequencer_words);
 
 // host command interface
-int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t timeout_ms);
+int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t* result, uint16_t timeout_ms);
 int ap0202at_issue_host_command(sensor_t *sensor, uint16_t command, uint16_t timeout_ms);
 int ap0202at_issue_host_command_with_params(sensor_t *sensor, uint16_t command, uint8_t* params, size_t params_len, uint16_t timeout_ms);
 int ap0202at_read_host_command_result(sensor_t *sensor, uint16_t *result, uint16_t timeout_ms);
@@ -47,7 +47,11 @@ int ap0202at_enter_configuration_mode_software(sensor_t *sensor);
 // reset process
 int ap0202at_reset(sensor_t *sensor);
 int ap0202at_sensor_discovery(sensor_t *sensor, uint16_t *sensor_id);
-int ap0202at_enter_streaming(sensor_t *sensor);
+
+// sysmgr commands
+int ap0202at_sysmgr_set_state(sensor_t *sensor, uint8_t state);
+int ap0202at_sysmgr_get_state(sensor_t *sensor, uint8_t *state);
+int ap0202at_sysmgr_enter_state_streaming(sensor_t *sensor);
 
 // sensor_t struct initialization
 int ap0202at_init(sensor_t *sensor);
