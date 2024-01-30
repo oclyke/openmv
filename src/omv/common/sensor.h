@@ -23,6 +23,7 @@
 #define HM0XX0_SLV_ADDR         (0x48)
 #define GC2145_SLV_ADDR         (0x78)
 #define FROGEYE2020_SLV_ADDR    (0x6E)
+#define AP0202AT_SLV_ADDR       (0xBA) // S_addr: { 0: 0x90, 1: 0xBA }
 
 // Chip ID Registers
 #define OV5640_CHIP_ID          (0x300A)

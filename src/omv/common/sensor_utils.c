@@ -34,6 +34,8 @@
 #include "omv_boardconfig.h"
 #include "omv_gpio.h"
 #include "omv_i2c.h"
+#include "ap0202at.h"
+#include "ap0202at_generic.h"
 
 #ifndef OMV_ISC_MAX_DEVICES
 #define OMV_ISC_MAX_DEVICES (5)
@@ -232,6 +234,50 @@ static int sensor_detect() {
                 sensor.chip_id_w = FROGEYE2020_ID;
                 return slv_addr;
             #endif // (OMV_FROGEYE2020_ENABLE == 1)
+
+            #if (OMV_ENABLE_AP0202AT_AR0147 == 1) || \
+                (OMV_ENABLE_AP0202AT_AR0231 == 1)
+            case AP0202AT_SLV_ADDR: {
+                bool isp_detected = false;
+                bool sensor_detected = false;
+
+                // detect isp
+                sensor.slv_addr = slv_addr;
+                int ret = ap0202at_detect_self(&sensor, &isp_detected);
+                sensor.slv_addr = 0;
+                if (0 != ret) {
+                    return 0;
+                }
+                if (!isp_detected) {
+                    return 0;
+                }
+
+                // subselect the attached sensor
+                #if (OMV_ENABLE_AP0202AT_AR0147 == 1)
+                    sensor.slv_addr = slv_addr;
+                    ret = ap0202at_detect_sensor_ar0147(&sensor, &sensor_detected);
+                    sensor.slv_addr = 0;
+                    if (0 != ret) {
+                        return 0;
+                    }
+                    if (sensor_detected) {
+                        return slv_addr;
+                    }
+                #endif // (OMV_ENABLE_AP0202AT_AR0147 == 1)
+
+                #if (OMV_ENABLE_AP0202AT_AR0231 == 1)
+                    sensor.slv_addr = slv_addr;
+                    ret = ap0202at_detect_sensor_ar0231at(&sensor, &sensor_detected);
+                    sensor.slv_addr = 0;
+                    if (0 != ret) {
+                        return 0;
+                    }
+                    if (sensor_detected) {
+                        return slv_addr;
+                    }
+                #endif // (OMV_ENABLE_AP0202AT_AR0231 == 1)
+            }
+            #endif // (OMV_EMABlE_AP0202AT == 1)
         }
     }
 

@@ -14,10 +14,6 @@
 #define AP0202AT_VARIABLE(page, offset)                          (0x8000 | ((page) << 10) | (offset))
 
 // COMMAND_REGISTER SHORTCUTS
-#define AP0202AT_REG_COMMAND_REGISTER                             (0x0000)
-
-#define AP0202AT_HC_CHANGE_CONFIG                                 (0x8100)
-
 #define AP0202AT_HC_CMD_SYSMGR_SET_STATE                          (0x8100)
 #define AP0202AT_HC_CMD_SYSMGR_GET_STATE                          (0x8101)
 
@@ -36,14 +32,17 @@
 #define AP0202AT_HC_CMD_CCIMGR_GET_LOCK                           (0x8D00)
 #define AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS                        (0x8D01)
 #define AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK                       (0x8D02)
-#define AP0202AT_HC_CMD_CCIMGR_WRITE                              (0x8D06)
+#define AP0202AT_HC_CMD_CCIMGR_CONFIG                             (0x8D03)
+#define AP0202AT_HC_CMD_CCIMGR_SET_DEVICE                         (0x8D04)
 #define AP0202AT_HC_CMD_CCIMGR_READ                               (0x8D05)
+#define AP0202AT_HC_CMD_CCIMGR_WRITE                              (0x8D06)
 #define AP0202AT_HC_CMD_CCIMGR_WRITE_BITFIELD                     (0x8D07)
 #define AP0202AT_HC_CMD_CCIMGR_STATUS                             (0x8D08)
 
 #define AP0202AT_HC_CMD_STEMGR_CONFIG                             (0x8310)
 #define AP0202AT_HC_CMD_STEMGR_WRITE_CONFIG                       (0x8313)
 
+// AND9930/D Table 3. Response Codes
 #define AP0202AT_HC_RESP_ENOERR   (0)
 #define AP0202AT_HC_RESP_ENOENT   (1)
 #define AP0202AT_HC_RESP_EINTR    (2)
@@ -62,7 +61,20 @@
 #define AP0202AT_HC_RESP_ENOSYS   (15)
 #define AP0202AT_HC_RESP_EALREADY (16)
 
+// AND9930/D Table 5. System Manager Permanent States
+#define AP0202AT_HCI_SYS_STATE_IDLE                               (0x20)
+#define AP0202AT_HCI_SYS_STATE_STREAMING                          (0x31)
+#define AP0202AT_HCI_SYS_STATE_SUSPENDED                          (0x41)
+#define AP0202AT_HCI_SYS_STATE_SOFT_STANDBY                       (0x53)
+#define AP0202AT_HCI_SYS_STATE_HARD_STANDBY                       (0x5B)
+
 // SYSCTL
+#define AP0202AT_REG_SYSCTL_CHIP_VERSION_REG                      (0x0000)
+#define AP0202AT_SYSCTL_CHIP_VERSION_REG_DEFAULT_VALUE            (0x0064)
+
+#define AP0202AT_REG_SYSCTL_USER_DEFINED_DEVICE_ADDRESS_ID        (0x0006)
+#define AP0202AT_SYSCTL_USER_DEFINED_DEVICE_ADDRESS_ID_DEFAULT_VALUE (0xBA90)
+
 #define AP0202AT_REG_SYSCTL_RESET_AND_MISC_CONTROL                (0x001A)
 #define AP0202AT_SYSCTL_RESET_AND_MISC_CONTROL_RESET_SOFT         (0x0001)
 #define AP0202AT_SYSCTL_RESET_AND_MISC_CONTROL_RESET_SOFT_MASK    (0x0001)
