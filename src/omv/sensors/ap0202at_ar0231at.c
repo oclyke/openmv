@@ -1082,7 +1082,7 @@ static int reset(sensor_t *sensor) {
     }
 
     // Issue the Change Config command to enter streaming.
-    ret = ap0202at_enter_streaming(sensor);
+    ret = ap0202at_sysmgr_enter_state_streaming(sensor);
     if (ret != 0) {
         return -1;
     }

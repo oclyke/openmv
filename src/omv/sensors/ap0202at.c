@@ -72,11 +72,6 @@ int ap0202at_variable_address(uint16_t* address_out, uint8_t page, uint8_t offse
 int ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data) {
     int ret = 0;
 
-    // // Translate OpenMV return code.
-    // if (omv_i2c_readw2(&sensor->i2c_bus, sensor->slv_addr, reg_addr, reg_data) != 0) {
-    //     return -1;
-    // }
-
     // Translate OpenMV return code.
     int omv_return_code = omv_i2c_readw2(&sensor->i2c_bus, sensor->slv_addr, reg_addr, reg_data);
     if (omv_return_code != 0) {
@@ -363,19 +358,25 @@ int ap0202at_write_sensor_sequencer(sensor_t* sensor, uint16_t port_address, con
  *   to be blocking in order to limit the rate of polling.
  * 
  * @param sensor the sensor struct.
+ * @param data [output] pointer to the data read from the
+ *  COMMAND_REGISTER.
  * @param timeout_ms the maximum time to wait for the
  *   Doorbell Bit to clear in milliseconds.
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t timeout_ms) {
+int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t* data, uint16_t timeout_ms) {
     int ret = 0;
     for (mp_uint_t start = mp_hal_ticks_ms();;) {
         uint16_t reg_data;
 
         // Read the COMMAND_REGISTER.
-        if(ap0202at_read_reg_direct(sensor, AP0202AT_REG_COMMAND_REGISTER, &reg_data) != 0) {
-            printf("FAILED TO READ COMMAND REGISTER\n");
+        if(ap0202at_read_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, &reg_data) != 0) {
             return -1;
+        }
+
+        // Return the data if the output parameter is not NULL.
+        if (data != NULL) {
+            *data = reg_data;
         }
 
         // Return success if the Doorbell Bit is clear.
@@ -384,8 +385,9 @@ int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t timeout_ms) {
         }
 
         // Return error if the timeout has elapsed.
-        if ((mp_hal_ticks_ms() - start) >= timeout_ms) {
-            printf("DOORBELL BIT TIMEOUT, %d ms\n", timeout_ms);
+        mp_uint_t now = mp_hal_ticks_ms();
+        mp_uint_t delta = (now - start);
+        if (delta >= timeout_ms) {
             return -1;
         }
     }
@@ -414,14 +416,14 @@ int ap0202at_issue_host_command(sensor_t *sensor, uint16_t command, uint16_t tim
 
     printf("issue host command: 0x%04X\n", command);
 
-    if (ap0202at_poll_doorbell_bit(sensor, timeout_ms) != 0) {
+    if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
         printf("DOORBELL BIT FAILED TO CLEAR\n");
         return -1;
     }
 
     // Doorbell bit is clear, OK to issue command.
     command |= AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK;
-    if (ap0202at_write_reg_direct(sensor, AP0202AT_REG_COMMAND_REGISTER, command) != 0) {
+    if (ap0202at_write_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, command) != 0) {
         printf("FAILED TO WRITE COMMAND REGISTER\n");
         return -1;
     }
@@ -451,13 +453,8 @@ int ap0202at_issue_host_command(sensor_t *sensor, uint16_t command, uint16_t tim
 int ap0202at_read_host_command_result(sensor_t *sensor, uint16_t *result, uint16_t timeout_ms) {
     int ret = 0;
 
-    // Poll the Doorbell Bit.
-    if (ap0202at_poll_doorbell_bit(sensor, timeout_ms) != 0) {
-        return -1;
-    }
-
-    // Read the result into the output parameter.
-    if (ap0202at_read_reg_direct(sensor, AP0202AT_REG_COMMAND_REGISTER, result) != 0) {
+    // Poll the Doorbell Bit and read the result.
+    if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
         return -1;
     }
 
@@ -488,10 +485,12 @@ int ap0202at_issue_host_command_with_params(sensor_t *sensor, uint16_t command, 
         return -1;
     }
 
-    if (ap0202at_poll_doorbell_bit(sensor, timeout_ms) != 0) {
+    // Ensure that the Doorbell Bit is clear.
+    if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
         return -1;
     }
     
+    // Write the parameters to the parameter pool.
     size_t pairs = params_len / 2;
     for (size_t i = 0; i < pairs; i++) {
         if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + i, (params[2*i] << 8) | params[2*i + 1]) != 0) {
@@ -499,6 +498,7 @@ int ap0202at_issue_host_command_with_params(sensor_t *sensor, uint16_t command, 
         }
     }
 
+    // Issue the command.
     return ap0202at_issue_host_command(sensor, command, timeout_ms);
 }
 
@@ -526,12 +526,7 @@ int ap0202at_read_host_command_result_with_params(sensor_t *sensor, uint16_t *re
     }
 
     // Poll the Doorbell Bit.
-    if (ap0202at_poll_doorbell_bit(sensor, timeout_ms) != 0) {
-        return -1;
-    }
-
-    // Read the result into the output parameter.
-    if (ap0202at_read_reg_direct(sensor, AP0202AT_REG_COMMAND_REGISTER, result) != 0) {
+    if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
         return -1;
     }
 
@@ -663,7 +658,7 @@ int ap0202at_reset(sensor_t *sensor) {
     //   configuration mode and is particularly called
     //   out if the Flash-Config mode is used to
     //   indicate that the flash download is complete.
-    if (ap0202at_poll_doorbell_bit(sensor, 250) != 0) {
+    if (ap0202at_poll_doorbell_bit(sensor, NULL, 250) != 0) {
         return -1;
     }
 
@@ -722,32 +717,86 @@ int ap0202at_sensor_discovery(sensor_t *sensor, uint16_t *sensor_id) {
 }
 
 /**
- * @brief Change Config into streaming mode.
+ * @brief Issue the SYSMGR SET_STATE command to enter 'state'.
  * 
  * @param sensor 
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_enter_streaming(sensor_t *sensor) {
+int ap0202at_sysmgr_set_state(sensor_t *sensor, uint8_t state) {
     int ret = 0;
     uint16_t host_command_result;
 
-    // Issue the Change Config command to enter streaming.
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CHANGE_CONFIG, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    // Issue the SET_STATE command to enter streaming.
+    if(ap0202at_poll_doorbell_bit(sensor, NULL, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, state) != 0) {
+        return -1;
+    }
+    if (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_SET_STATE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
-    // Ensure that the system is now in the streaming
-    //   state.
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    return ret;
+}
+
+/**
+ * @brief Issue the SYSMGR GET_STATE command to read the current state.
+ * 
+ * @param sensor the sensor struct.
+ * @param state [output] the current state.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_sysmgr_get_state(sensor_t *sensor, uint8_t *state) {
+    int ret = 0;
+    uint16_t host_command_result;
+    if (NULL == state) {
         return -1;
     }
-    printf("UNUSED SYSMGR_GET_STATE RETURN VALUE: %d\n", host_command_result);
-    // if (host_command_result != AP0202AT_HC_SYSMGR_GET_STATE_RETURN_SYS_STATE_STREAMING) {
-    //     return -1;
-    // }
+
+    uint8_t pool[2];
+    if  (ap0202at_issue_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_read_host_command_result_with_params(sensor, &host_command_result, pool, sizeof(pool), AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
+        printf("Failed to get state: (err %d)\n", host_command_result);
+        return -1;
+    }
+
+    // Return the state.
+    *state = pool[0];
+
+    return ret;
+}
+
+/**
+ * @brief Enter the streaming state.
+ * 
+ * @param sensor the sensor struct.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_sysmgr_enter_state_streaming(sensor_t *sensor) {
+    int ret = 0;
+    uint8_t state;
+
+    ret = ap0202at_sysmgr_set_state(sensor, AP0202AT_HCI_SYS_STATE_STREAMING);
+    if (ret != 0) {
+        return -1;
+    }
+
+    ret = ap0202at_sysmgr_get_state(sensor, &state);
+    if (ret != 0) {
+        return -1;
+    }
+    if (state != AP0202AT_HCI_SYS_STATE_STREAMING) {
+        return -1;
+    }
 
     return ret;
 }
