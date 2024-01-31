@@ -40,23 +40,6 @@
 #define AP0202AT_RESET_GET_STATE_TIMEOUT_MS (200)
 
 /**
- * @brief Get the address of a variable in the AP0202AT
- *  given the page and offset.
- * 
- * @param address_out 
- * @param page 
- * @param offset 
- * @return int 0 on success, -1 on error.
- */
-int ap0202at_variable_address(uint16_t* address_out, uint8_t page, uint8_t offset) {
-  int ret = 0;
-  if (address_out != NULL) {
-    *address_out = (0x8000 | ((page) << 10) | (offset));
-  }
-  return ret;
-}
-
-/**
  * @brief Read a register from the AP0202AT ISP.
  * @details Uses the two-wire interface to read a 16-bit
  *   wide register from the AP0202AT ISP.
@@ -232,21 +215,19 @@ int ap0202at_write_patch(sensor_t* sensor, const uint16_t *data, uint16_t data_w
     return ap0202at_write_reg_burst_addr_24(sensor, (uint16_t*)data, data_words);
 }
 
-/**
- * @brief Write a register in the sensor attached to the
- *  AP0202AT ISP.
- * 
- * @param sensor the sensor struct.
- * @param addr the register address at which the data
- *   will be written in the attached sensor.
- * @param data the data to be written to the register.
- * @return int 0 on success, -1 on error.
- */
-int ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t addr, uint16_t data) {
-    // this function is not yet implemented.
-    // please see ap0202at_generic.c for an example of using the CCIM
-    // interface.
-    return -1;
+int ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t port_address, uint16_t data, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+    int ret = 0;
+
+    uint8_t buf[2];
+    buf[0] = data >> 8;
+    buf[1] = data & 0xFF;
+
+    ret = ap0202at_cci_manager_write(sensor, port_address, buf, 2, timeout_start_ms, timeout_start_ms);
+    if (ret != 0) {
+        return -1;
+    }
+
+    return ret;
 }
 
 /**
@@ -262,126 +243,473 @@ int ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t addr, uint16_t data) {
  * @return int 0 on success, -1 on error.
  */
 int ap0202at_write_sensor_sequencer(sensor_t* sensor, uint16_t port_address, const uint16_t* sequencer_data, size_t sequencer_words) {
+    // this function is not implemented.
+    // there are some serious questions left to answer such as:
+    // - what address are we writing to within the sensor?
+    // - is that data encoded in the sequencer format?
+    // - how can we make this work with the ap0202at_cci_manager_write function?
+    return -1;
+
+    // int ret = 0;
+    // uint16_t host_command_result;
+
+    // size_t burst_words = 6;
+    // size_t num_bursts = sequencer_words / burst_words;
+    // size_t leftover_words = sequencer_words % burst_words;
+
+    // // The full params pool contains the port address
+    // //   followed by the legnth (u16) followed by the
+    // //   burst data.
+    // size_t param_pool_words = 1 + 1 + burst_words;
+    // size_t leftover_pool_words = 1 + 1 + leftover_words;
+    // uint16_t params_pool[param_pool_words];
+
+    // // Loop over all complete bursts of 6 words.
+    // for (size_t idx = 0; idx < num_bursts; idx++) {
+
+    //     // Prepare the params pool.
+    //     params_pool[0] = port_address;
+    //     params_pool[1] = (burst_words << 9);
+    //     for (size_t i = 0; i < burst_words; i++) {
+    //         params_pool[2 + i] = sequencer_data[idx * burst_words + i];
+    //     }
+
+    //     // Load the parameters pool into the AP0202AT.
+    //     if (omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&params_pool[0], 2*param_pool_words, OMV_I2C_XFER_NO_FLAGS) != 0) {
+    //         return -1;
+    //     }
+
+    //     // Write the data through the CCIMGR interface
+    //     if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_WRITE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    //         return -1;
+    //     }
+    //     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
+    //         return -1;
+    //     }
+
+    //     // Poll the CCIMGR_STATUS command until the write is
+    //     //   complete as indicated by a response of ENOERR.
+    //     for (;;) {
+    //         if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    //             return -1;
+    //         }
+    //         if (host_command_result == AP0202AT_HC_RESP_ENOERR) {
+    //             break;
+    //         }
+    //     }
+
+    // }
+
+    // // Handle the remaining data, if any.
+    // if (leftover_words != 0) {
+
+    //     // Prepare the params pool.
+    //     params_pool[0] = port_address;
+    //     params_pool[1] = (leftover_words << 9);
+    //     for (size_t i = 0; i < leftover_words; i++) {
+    //         params_pool[2 + i] = sequencer_data[sequencer_words - leftover_words + i];
+    //     }
+
+    //     // Load the parameters pool into the AP0202AT.
+    //     if (omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&params_pool[0], 2*leftover_pool_words, OMV_I2C_XFER_NO_FLAGS) != 0) {
+    //         return -1;
+    //     }
+
+    //     // Write the data through the CCIMGR interface
+    //     if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_WRITE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    //         return -1;
+    //     }
+    //     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
+    //         return -1;
+    //     }
+
+    //     // Poll the CCIMGR_STATUS command until the write is
+    //     //   complete as indicated by a response of ENOERR.
+    //     for (;;) {
+    //         if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    //             return -1;
+    //         }
+    //         if (host_command_result == AP0202AT_HC_RESP_ENOERR) {
+    //             break;
+    //         }
+    //     }
+    // }
+
+    // return ret;
+}
+
+/**
+ * @brief Issues 'command' through the host command interface command register.
+ * 
+ * @param sensor the sensor struct.
+ * @param command the command to be issued.
+ * @return int 0 on success, -1 on error.
+ */
+static int ap0202at_host_command_issue_command(sensor_t *sensor, uint16_t command) {
     int ret = 0;
-    uint16_t host_command_result;
 
-    size_t burst_words = 6;
-    size_t num_bursts = sequencer_words / burst_words;
-    size_t leftover_words = sequencer_words % burst_words;
-
-    // The full params pool contains the port address
-    //   followed by the legnth (u16) followed by the
-    //   burst data.
-    size_t param_pool_words = 1 + 1 + burst_words;
-    size_t leftover_pool_words = 1 + 1 + leftover_words;
-    uint16_t params_pool[param_pool_words];
-
-    // Loop over all complete bursts of 6 words.
-    for (size_t idx = 0; idx < num_bursts; idx++) {
-
-        // Prepare the params pool.
-        params_pool[0] = port_address;
-        params_pool[1] = (burst_words << 9);
-        for (size_t i = 0; i < burst_words; i++) {
-            params_pool[2 + i] = sequencer_data[idx * burst_words + i];
-        }
-
-        // Load the parameters pool into the AP0202AT.
-        if (omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&params_pool[0], 2*param_pool_words, OMV_I2C_XFER_NO_FLAGS) != 0) {
-            return -1;
-        }
-
-        // Write the data through the CCIMGR interface
-        if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_WRITE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
-            return -1;
-        }
-        if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-            return -1;
-        }
-
-        // Poll the CCIMGR_STATUS command until the write is
-        //   complete as indicated by a response of ENOERR.
-        for (;;) {
-            if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
-                return -1;
-            }
-            if (host_command_result == AP0202AT_HC_RESP_ENOERR) {
-                break;
-            }
-        }
-
+    // Issue the command.
+    command |= AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK;
+    if (ap0202at_write_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, command) != 0) {
+        return -1;
     }
 
-    // Handle the remaining data, if any.
-    if (leftover_words != 0) {
+    return ret;
+}
 
-        // Prepare the params pool.
-        params_pool[0] = port_address;
-        params_pool[1] = (leftover_words << 9);
-        for (size_t i = 0; i < leftover_words; i++) {
-            params_pool[2 + i] = sequencer_data[sequencer_words - leftover_words + i];
-        }
+// /**
+//  * @brief Poll the Doorbell Bit until it is clear or a
+//  *   timeout occurs.
+//  * 
+//  * This function relies on the ap0202at_read_reg_direct function
+//  *   to be blocking in order to limit the rate of polling.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param data [output] pointer to the data read from the
+//  *  COMMAND_REGISTER.
+//  * @param timeout_ms the maximum time to wait for the
+//  *   Doorbell Bit to clear in milliseconds.
+//  * @return int 0 on success, -1 on error.
+//  */
+// int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t* data, uint16_t timeout_ms) {
+//     int ret = 0;
+//     for (mp_uint_t start = mp_hal_ticks_ms();;) {
 
-        // Load the parameters pool into the AP0202AT.
-        if (omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&params_pool[0], 2*leftover_pool_words, OMV_I2C_XFER_NO_FLAGS) != 0) {
-            return -1;
-        }
+//         // Check the Doorbell Bit.
+//         bool doorbell;
+//         ret = ap0202at_check_doorbell_bit(sensor, data, &doorbell);
+//         if (ret != 0) {
+//             return -1;
+//         }
 
-        // Write the data through the CCIMGR interface
-        if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_WRITE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
-            return -1;
-        }
-        if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-            return -1;
-        }
+//         // Return error if the timeout has elapsed.
+//         mp_uint_t now = mp_hal_ticks_ms();
+//         mp_uint_t delta = (now - start);
+//         if (delta >= timeout_ms) {
+//             return -1;
+//         }
+//     }
 
-        // Poll the CCIMGR_STATUS command until the write is
-        //   complete as indicated by a response of ENOERR.
-        for (;;) {
-            if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
-                return -1;
-            }
-            if (host_command_result == AP0202AT_HC_RESP_ENOERR) {
-                break;
-            }
-        }
+//     return ret;
+// }
+
+
+// /**
+//  * @brief Issue a command to the AP0202AT ISP via the host
+//  *   command interface.
+//  * @details Polls the Doorbell Bit of the COMMAND_REGISTER
+//  *   until either it is clear or a timeout occurs. If the
+//  *   Doorbell Bit is clear, the command is issued.
+//  * 
+//  * Note: This function does not check the return value of
+//  *   the command. Use the ap0202at_read_host_command_result function
+//  *   to check the result of the previous command.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param command the command to be issued.
+//  * @return int 0 on success, -1 on error.
+//  */
+// int ap0202at_issue_host_command(sensor_t *sensor, uint16_t command, uint16_t timeout_ms) {
+//     int ret = 0;
+
+//     printf("issue host command: 0x%04X\n", command);
+
+//     if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
+//         printf("DOORBELL BIT FAILED TO CLEAR\n");
+//         return -1;
+//     }
+
+//     // Doorbell bit is clear, OK to issue command.
+//     command |= AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK;
+//     if (ap0202at_write_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, command) != 0) {
+//         printf("FAILED TO WRITE COMMAND REGISTER\n");
+//         return -1;
+//     }
+
+//     return ret;
+// }
+
+// /**
+//  * @brief Read the result of the previous host command.
+//  * @details Polls the Doorbell Bit of the COMMAND_REGISTER
+//  *   to ensure that the previous command has completed.
+//  * 
+//  * This function is idempotent. It will always read the
+//  *   result of the last command issued.
+//  * 
+//  * In order to issue a command and read the result use the
+//  *   host_command function.
+//  * 
+//  * This function does not perform a NULL check on the
+//  *   output parameter.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param result [output] pointer for the result of the
+//  *   previous command.
+//  * @return int 0 on success, -1 on error.
+//  */
+// int ap0202at_read_host_command_result(sensor_t *sensor, uint16_t *result, uint16_t timeout_ms) {
+//     int ret = 0;
+
+//     // Poll the Doorbell Bit and read the result.
+//     if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
+//         return -1;
+//     }
+
+//     return ret;
+// }
+
+// /**
+//  * @brief Issues a host command after writing the parameters
+//  *  to the parameter pool. The parameters array is written
+//  *  sequentially beginning at PARAM_POOL_0.
+//  * 
+//  * AND9930 Figure 4.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param command the command to be issued.
+//  * @param params pointer to the parameters array. data is
+//  *  stored in big-endian format. e.g. the 16-bit value 0x1234
+//  *  is stored as {0x12, 0x34}.
+//  * @param params_len length of the parameters array. must be
+//  *  even to ensure that the parameters are written in pairs.
+//  * @return int 0 on success, -1 on error.
+//  */
+// int ap0202at_issue_host_command_with_params(sensor_t *sensor, uint16_t command, uint8_t* params, size_t params_len, uint16_t timeout_ms) {
+//     if (params_len > 255) {
+//         return -1;
+//     }
+//     if (params_len % 2 != 0) {
+//         return -1;
+//     }
+
+//     // Ensure that the Doorbell Bit is clear.
+//     if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
+//         return -1;
+//     }
+    
+//     // Write the parameters to the parameter pool.
+//     size_t pairs = params_len / 2;
+//     for (size_t i = 0; i < pairs; i++) {
+//         if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + i, (params[2*i] << 8) | params[2*i + 1]) != 0) {
+//             return -1;
+//         }
+//     }
+
+//     // Issue the command.
+//     return ap0202at_issue_host_command(sensor, command, timeout_ms);
+// }
+
+
+
+// /**
+//  * @brief Read the result of the previous host command along
+//  *  with the parameters written to the parameter pool.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param result [output] pointer for the result of the
+//  * @param params [output] pointer to the parameters array.
+//  * @param params_len length of the parameters array. must be
+//  *  even to ensure that the parameters are read in pairs.
+//  * @return int 0 on success, -1 on error.
+//  */
+// int ap0202at_read_host_command_result_with_params(sensor_t *sensor, uint16_t *result, uint8_t* params, size_t params_len, uint16_t timeout_ms) {
+//     int ret = 0;
+
+//     if (params_len > 255) {
+//         return -1;
+//     }
+//     if (params_len % 2 != 0) {
+//         return -1;
+//     }
+
+//     // Poll the Doorbell Bit.
+//     if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
+//         return -1;
+//     }
+
+//     size_t pairs = params_len / 2;
+//     for (size_t i = 0; i < pairs; i++) {
+//         uint16_t param;
+//         if (ap0202at_read_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + i, &param) != 0) {
+//             return -1;
+//         }
+//         params[2*i] = param >> 8;
+//         params[2*i + 1] = param & 0xFF;
+//     }
+
+//     return ret;
+// }
+
+// /**
+//  * @brief Perform a complete host command cycle.
+//  * @details Issues a command to the AP0202AT ISP via the
+//  *   host command interface and waits for the result.
+//  * 
+//  * This function does not perform a NULL check on the
+//  *   output parameter.
+//  * 
+//  * This function combines the ap0202at_issue_host_command and the
+//  *   ap0202at_read_host_command_result functions. Thusly, it has
+//  *   the opportunity to time out at two points.
+//  *   - Firstly: at the ap0202at_issue_host_command function. A
+//  *       timeout here indicates that a previous command
+//  *       is still in progress.
+//  *   - Secondly: at the ap0202at_read_host_command_result function.
+//  *       A timeout here indicates that the command that was
+//  *       issued was not able to complete in time.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @param command 
+//  * @param result [output] pointer for the result of the
+//  *   previous command.
+//  * @return int 
+//  */
+// int ap0202at_host_command(sensor_t *sensor, uint16_t command, uint16_t* result, uint16_t timeout_issue_ms, uint16_t timeout_read_ms) {
+//     int ret = 0;
+
+//     // Issue the command.
+//     if (ap0202at_issue_host_command(sensor, command, timeout_issue_ms) != 0) {
+//         return -1;
+//     }
+
+//     // Read the result.
+//     if (ap0202at_read_host_command_result(sensor, result, timeout_read_ms) != 0) {
+//         return -1;
+//     }
+
+//     return ret;
+// }
+
+/**
+ * @brief Place u8 parameter in the parameter pool at 'offset'.
+ * Use 'ap0202at_host_command_load_parameter_pool' to load the
+ *  paramter pool into the device.
+ * 
+ * @param pool pointer to the parameter pool.
+ * @param offset the offset (bytes) at which to place the
+ *  parameter.
+ * @param param the parameter to be placed. 
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_host_command_emplace_parameter_offset_u8(uint8_t* pool, size_t pool_len, size_t offset, uint8_t param) {
+    if (NULL == pool) {
+        return -1;
+    }
+    if (pool_len < 1) {
+        return -1;
+    }
+    if (offset > (pool_len - 1)) {
+        return -1;
+    }
+    pool[offset] = param;
+    return 0;
+}
+
+/**
+ * @brief Place u16 parameter in the parameter pool at 'offset'.
+ * 
+ * @param pool pointer to the parameter pool.
+ * @param offset the offset (bytes) at which to place the
+ * parameter.
+ * @param param the parameter to be placed.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_host_command_emplace_parameter_offset_u16(uint8_t* pool, size_t pool_len, size_t offset, uint16_t param) {
+    if (NULL == pool) {
+        return -1;
+    }
+    if (pool_len < 2) {
+        return -1;
+    }
+    if (offset > (pool_len - 2)) {
+        return -1;
+    }
+    pool[offset] = param >> 8;
+    pool[offset + 1] = param & 0xFF;
+    return 0;
+}
+
+/**
+ * @brief Place u32 parameter in the parameter pool at 'offset'.
+ * 
+ * @param pool pointer to the parameter pool.
+ * @param offset the offset (bytes) at which to place the
+ * parameter.
+ * @param param the parameter to be placed.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_host_command_emplace_parameter_offset_u32(uint8_t* pool, size_t pool_len, size_t offset, uint32_t param) {
+    if (NULL == pool) {
+        return -1;
+    }
+    if (pool_len < 4) {
+        return -1;
+    }
+    if (offset > (pool_len - 4)) {
+        return -1;
+    }
+    pool[offset] = param >> 24;
+    pool[offset + 1] = (param >> 16) & 0xFF;
+    pool[offset + 2] = (param >> 8) & 0xFF;
+    pool[offset + 3] = param & 0xFF;
+    return 0;
+}
+
+/**
+ * @brief Check the Doorbell Bit of the COMMAND_REGISTER.
+ * 
+ * @param sensor the sensor struct.
+ * @param result [output] pointer to the data read from the
+ *  COMMAND_REGISTER.
+ * @param doorbell [output] pointer to the doorbell bit.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_host_command_get_doorbell_bit(sensor_t *sensor, uint16_t *result, bool *doorbell) {
+    int ret = 0;
+    uint16_t reg_data;
+
+    // Read the COMMAND_REGISTER.
+    if(ap0202at_read_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, &reg_data) != 0) {
+        return -1;
+    }
+
+    // Return the data if the output parameter is not NULL.
+    if (result != NULL) {
+        *result = reg_data;
+    }
+
+    // Return the doorbell bit if the output parameter is not NULL.
+    if (doorbell != NULL) {
+        *doorbell = ((reg_data & AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK) != 0);
     }
 
     return ret;
 }
 
 /**
- * @brief Poll the Doorbell Bit until it is clear or a
- *   timeout occurs.
- * 
- * This function relies on the ap0202at_read_reg_direct function
- *   to be blocking in order to limit the rate of polling.
+ * @brief Check the Doorbell Bit of the COMMAND_REGISTER.
  * 
  * @param sensor the sensor struct.
- * @param data [output] pointer to the data read from the
+ * @param result [output] pointer to the data read from the
  *  COMMAND_REGISTER.
  * @param timeout_ms the maximum time to wait for the
- *   Doorbell Bit to clear in milliseconds.
+ *  Doorbell Bit to clear in milliseconds.
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t* data, uint16_t timeout_ms) {
+int ap0202at_host_command_poll_doorbell_bit_clear(sensor_t *sensor, uint16_t *result, uint16_t timeout_ms) {
     int ret = 0;
     for (mp_uint_t start = mp_hal_ticks_ms();;) {
-        uint16_t reg_data;
-
-        // Read the COMMAND_REGISTER.
-        if(ap0202at_read_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, &reg_data) != 0) {
+        // Check the Doorbell Bit.
+        bool doorbell;
+        ret = ap0202at_host_command_get_doorbell_bit(sensor, result, &doorbell);
+        if (ret != 0) {
             return -1;
         }
 
-        // Return the data if the output parameter is not NULL.
-        if (data != NULL) {
-            *data = reg_data;
-        }
-
-        // Return success if the Doorbell Bit is clear.
-        if ((reg_data & AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK) == 0) {
-            return 0;
+        // Break if the Doorbell Bit is clear.
+        if (!doorbell) {
+            break;
         }
 
         // Return error if the timeout has elapsed.
@@ -395,188 +723,479 @@ int ap0202at_poll_doorbell_bit(sensor_t *sensor, uint16_t* data, uint16_t timeou
     return ret;
 }
 
-
 /**
- * @brief Issue a command to the AP0202AT ISP via the host
- *   command interface.
- * @details Polls the Doorbell Bit of the COMMAND_REGISTER
- *   until either it is clear or a timeout occurs. If the
- *   Doorbell Bit is clear, the command is issued.
- * 
- * Note: This function does not check the return value of
- *   the command. Use the ap0202at_read_host_command_result function
- *   to check the result of the previous command.
+ * @brief Loads the parameter pool with the given parameters.
  * 
  * @param sensor the sensor struct.
- * @param command the command to be issued.
- * @return int 0 on success, -1 on error.
- */
-int ap0202at_issue_host_command(sensor_t *sensor, uint16_t command, uint16_t timeout_ms) {
-    int ret = 0;
-
-    printf("issue host command: 0x%04X\n", command);
-
-    if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
-        printf("DOORBELL BIT FAILED TO CLEAR\n");
-        return -1;
-    }
-
-    // Doorbell bit is clear, OK to issue command.
-    command |= AP0202AT_SYSCTL_COMMAND_REGISTER_DOORBELL_BIT_MASK;
-    if (ap0202at_write_reg_direct(sensor, AP0202AT_REG_SYSCTL_COMMAND_REGISTER, command) != 0) {
-        printf("FAILED TO WRITE COMMAND REGISTER\n");
-        return -1;
-    }
-
-    return ret;
-}
-
-/**
- * @brief Read the result of the previous host command.
- * @details Polls the Doorbell Bit of the COMMAND_REGISTER
- *   to ensure that the previous command has completed.
- * 
- * This function is idempotent. It will always read the
- *   result of the last command issued.
- * 
- * In order to issue a command and read the result use the
- *   host_command function.
- * 
- * This function does not perform a NULL check on the
- *   output parameter.
- * 
- * @param sensor the sensor struct.
- * @param result [output] pointer for the result of the
- *   previous command.
- * @return int 0 on success, -1 on error.
- */
-int ap0202at_read_host_command_result(sensor_t *sensor, uint16_t *result, uint16_t timeout_ms) {
-    int ret = 0;
-
-    // Poll the Doorbell Bit and read the result.
-    if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
-        return -1;
-    }
-
-    return ret;
-}
-
-/**
- * @brief Issues a host command after writing the parameters
- *  to the parameter pool. The parameters array is written
- *  sequentially beginning at PARAM_POOL_0.
- * 
- * AND9930 Figure 4.
- * 
- * @param sensor the sensor struct.
- * @param command the command to be issued.
- * @param params pointer to the parameters array. data is
- *  stored in big-endian format. e.g. the 16-bit value 0x1234
- *  is stored as {0x12, 0x34}.
+ * @param params pointer to the parameters array.
  * @param params_len length of the parameters array. must be
- *  even to ensure that the parameters are written in pairs.
+ * even to ensure that the parameters are written in pairs.
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_issue_host_command_with_params(sensor_t *sensor, uint16_t command, uint8_t* params, size_t params_len, uint16_t timeout_ms) {
-    if (params_len > 255) {
+int ap0202at_host_command_load_parameter_pool(sensor_t *sensor, size_t offset, uint8_t* params, size_t params_len) {
+    if (NULL == params) {
         return -1;
     }
-    if (params_len % 2 != 0) {
-        return -1;
-    }
-
-    // Ensure that the Doorbell Bit is clear.
-    if (ap0202at_poll_doorbell_bit(sensor, NULL, timeout_ms) != 0) {
+    if (params_len > 122) {
         return -1;
     }
     
     // Write the parameters to the parameter pool.
     size_t pairs = params_len / 2;
     for (size_t i = 0; i < pairs; i++) {
-        if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + i, (params[2*i] << 8) | params[2*i + 1]) != 0) {
+        if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + i, (params[2*i] << 8) | params[2*i + 1]) != 0) {
             return -1;
         }
     }
 
-    // Issue the command.
-    return ap0202at_issue_host_command(sensor, command, timeout_ms);
+    // handle the last parameter if the length is odd.
+    if ((params_len % 2) != 0) {
+        if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + pairs, params[params_len - 1]) != 0) {
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
-
-
 /**
- * @brief Read the result of the previous host command along
- *  with the parameters written to the parameter pool.
+ * @brief Unloads the parameter pool into the given parameters.
  * 
  * @param sensor the sensor struct.
- * @param result [output] pointer for the result of the
  * @param params [output] pointer to the parameters array.
  * @param params_len length of the parameters array. must be
- *  even to ensure that the parameters are read in pairs.
+ * even to ensure that the parameters are read in pairs.
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_read_host_command_result_with_params(sensor_t *sensor, uint16_t *result, uint8_t* params, size_t params_len, uint16_t timeout_ms) {
-    int ret = 0;
-
-    if (params_len > 255) {
+int ap0202at_host_command_unload_parameter_pool(sensor_t *sensor, size_t offset, uint8_t* params, size_t params_len) {
+    if (NULL == params) {
         return -1;
     }
-    if (params_len % 2 != 0) {
-        return -1;
-    }
-
-    // Poll the Doorbell Bit.
-    if (ap0202at_poll_doorbell_bit(sensor, result, timeout_ms) != 0) {
+    if (params_len > 122) {
         return -1;
     }
 
+    // Read the parameters from the parameter pool.
     size_t pairs = params_len / 2;
     for (size_t i = 0; i < pairs; i++) {
         uint16_t param;
-        if (ap0202at_read_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + i, &param) != 0) {
+        if (ap0202at_read_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + i, &param) != 0) {
             return -1;
         }
         params[2*i] = param >> 8;
         params[2*i + 1] = param & 0xFF;
     }
 
+    // handle the last parameter if the length is odd.
+    if ((params_len % 2) != 0) {
+        uint16_t param;
+        if (ap0202at_read_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + pairs, &param) != 0) {
+            return -1;
+        }
+        params[params_len - 1] = param & 0xFF;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Synchronous Host Command Flow.
+ * @details Executes a synchronous host command and returns the result.
+ *  * Doorbell bit must be clear before issuing the command, or the
+ *    command will not be issued and an error code will be returned.
+ * 
+ * This function does not validate that the command is a synchronous
+ * command!
+ * 
+ * AND9930/D HOST COMMAND PROCESSING :: Synchronous Command Flow
+ * 
+ * @param sensor 
+ * @param command 
+ * @param result 
+ * @return int 
+ */
+int ap0202at_host_command_execute_command_synchronous(sensor_t *sensor, uint16_t command, uint16_t* result, uint16_t timeout_ms) {
+    int ret = 0;
+    bool doorbell;
+
+    // Ensure that the Doorbell Bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
+        return -1;
+    }
+    if (doorbell) {
+        return -1;
+    }
+
+    // Issue the command.
+    ret = ap0202at_host_command_issue_command(sensor, command);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // Wait for the Doorbell Bit to be cleared.
+    ret = ap0202at_host_command_poll_doorbell_bit_clear(sensor, result, timeout_ms);
+    if (ret != 0) {
+        return -1;
+    }
+
     return ret;
 }
 
 /**
- * @brief Perform a complete host command cycle.
- * @details Issues a command to the AP0202AT ISP via the
- *   host command interface and waits for the result.
+ * @brief Start an asynchronous host command.
  * 
- * This function does not perform a NULL check on the
- *   output parameter.
+ * This function is mostly used symbolically to indicate that
+ * the command is asynchronous.
  * 
- * This function combines the ap0202at_issue_host_command and the
- *   ap0202at_read_host_command_result functions. Thusly, it has
- *   the opportunity to time out at two points.
- *   - Firstly: at the ap0202at_issue_host_command function. A
- *       timeout here indicates that a previous command
- *       is still in progress.
- *   - Secondly: at the ap0202at_read_host_command_result function.
- *       A timeout here indicates that the command that was
- *       issued was not able to complete in time.
+ * Currently no validation is done to ensure that the command
+ * is actually an aync command.
  * 
- * @param sensor the sensor struct.
+ * @param sensor 
  * @param command 
- * @param result [output] pointer for the result of the
- *   previous command.
+ * @param result 
+ * @param timeout_ms 
  * @return int 
  */
-int ap0202at_host_command(sensor_t *sensor, uint16_t command, uint16_t* result, uint16_t timeout_issue_ms, uint16_t timeout_read_ms) {
+int ap0202at_host_command_start_command_asynchronous(sensor_t *sensor, uint16_t command, uint16_t* result, uint16_t timeout_ms) {
     int ret = 0;
 
-    // Issue the command.
-    if (ap0202at_issue_host_command(sensor, command, timeout_issue_ms) != 0) {
+    // Launching an async command is the same as executing a synchronous
+    // command.
+    // The only difference is in the meaning of the response.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, command, result, timeout_ms);
+
+    return ret;
+}
+
+/**
+ * @brief Issues 'status_command' repeatedly until either the
+ *  result is not EBUSY or a timeout occurs.
+ * 
+ * See AND9930/D Table 1. "Asynchronous Commands and their Get Status Partner"
+ * for a list of asynchronous commands and their corresponding status commands.
+ * 
+ * @param sensor 
+ * @param status_command 
+ * @param result 
+ * @param timeout_ms 
+ * @return int 
+ */
+int ap0202at_host_command_finish_command_asynchronous(sensor_t *sensor, uint16_t status_command, uint16_t *result, uint16_t timeout_ms) {
+    int ret = 0;
+
+    // This loop repeatedly checks the result of the status command
+    // until the result is not EBUSY.
+    // If the result is not EBUSY then the command has completed and
+    // the function exits.
+    // If the result is EBUSY then the function will continue polling
+    // until the timeout has elapsed.
+    for (mp_uint_t start = mp_hal_ticks_ms();;) {
+        // check the doorbell bit, as some other command 
+        // may be running.
+        bool doorbell;
+        ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+        if (ret != 0) {
+            return -1;
+        }
+
+        // Issue the status command only if the doorbell bit
+        // is clear.
+        if (!doorbell) {
+
+            // Note: we do not use "ap0202at_host_command_execute_command_synchronous"
+            // because formally we want to differentiate between different
+            // cases where that function might return an error.
+            // 1. error in communication, this function should return -1
+            // 2. doorbell bit is not clear, this function should continue
+            //    polling for an opportunity to issue the status command.
+            ret = ap0202at_host_command_issue_command(sensor, status_command);
+            if (ret != 0) {
+                return -1;
+            }
+
+            // Wait for the response of the status command.
+            ret = ap0202at_host_command_poll_doorbell_bit_clear(sensor, result, timeout_ms);
+            if (ret != 0) {
+                return -1;
+            }
+
+            // Return if the result is not EBUSY.
+            if (*result != AP0202AT_HC_RESP_EBUSY) {
+                return ret;
+            }
+        }
+
+        // Return error if the timeout has elapsed.
+        mp_uint_t now = mp_hal_ticks_ms();
+        mp_uint_t delta = (now - start);
+        if (delta >= timeout_ms) {
+            return -1;
+        }
+    }
+
+    return -1;
+}
+
+/**
+ * @brief Get CCI Manager Lock.
+ * 
+ * AND9930/D Table 219. CCI MANAGER HOST COMMANDS
+ * 
+ * @param sensor the sensor struct.
+ * @param timeout_start_ms timeout for starting the async command.
+ * @param timeout_finish_ms timeout for finishing the async command.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_cci_manager_get_lock(sensor_t *sensor, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+    int ret = 0;
+    uint16_t host_command_result;
+
+    // start the command asynchronously.
+    ret = ap0202at_host_command_start_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_GET_LOCK, &host_command_result, timeout_start_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
         return -1;
     }
 
-    // Read the result.
-    if (ap0202at_read_host_command_result(sensor, result, timeout_read_ms) != 0) {
+    // finish the command.
+    ret = ap0202at_host_command_finish_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS, &host_command_result, timeout_finish_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Release CCI Manager Lock.
+ * 
+ * @param sensor the sensor struct.
+ * @param timeout_ms timeout for the command.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_cci_manager_release_lock(sensor_t *sensor, uint16_t timeout_ms) {
+    int ret = 0;
+    uint16_t host_command_result;
+
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK, &host_command_result, timeout_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Configure the CCI Manager.
+ * 
+ * @param sensor the sensor struct.
+ * @param cci_speed_hz the cci bus speed in hertz.
+ * @param timeout_ms timeout for the command.
+ * @return int 0 on success, -1 on error.
+ */
+int ap0202at_cci_manager_config(sensor_t *sensor, uint32_t cci_speed_hz, uint16_t timeout_ms) {
+    int ret = 0;
+    uint16_t host_command_result;
+    bool doorbell;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
+        return -1;
+    }
+    if (doorbell) {
+        return -1;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[4];
+    ret = ap0202at_host_command_emplace_parameter_offset_u32(pool, sizeof(pool)/sizeof(pool[0]), 0, cci_speed_hz);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+
+    // execute the config command.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_CONFIG, &host_command_result, timeout_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief 
+ * 
+ * @param sensor 
+ * @param device_address 
+ * @param timeout_ms 
+ * @return int 
+ */
+int ap0202at_cci_manager_set_device(sensor_t *sensor, uint8_t device_address, uint16_t timeout_ms) {
+    int ret = 0;
+    uint16_t host_command_result;
+    bool doorbell;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
+        return -1;
+    }
+    if (doorbell) {
+        return -1;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[2];
+    ret = ap0202at_host_command_emplace_parameter_offset_u8(pool, sizeof(pool)/sizeof(pool[0]), 0, device_address);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+
+    // execute the command.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_SET_DEVICE, &host_command_result, timeout_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    return ret;
+}
+
+int ap0202at_cci_manager_read(sensor_t *sensor, uint16_t register_address, uint8_t* data, uint8_t data_len, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+    int ret = 0;
+    bool doorbell;
+    uint16_t host_command_result;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
+        return -1;
+    }
+    if (doorbell) {
+        return -1;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[3];
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, register_address);
+    if (ret != 0) {
+        return -1;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, data_len);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+
+    // start the command asynchronously.
+    ret = ap0202at_host_command_start_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_READ, &host_command_result, timeout_start_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    // finish the command.
+    ret = ap0202at_host_command_finish_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, timeout_finish_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    // unload the parameter pool.
+    ret = ap0202at_host_command_unload_parameter_pool(sensor, 0, data, data_len);
+    if (ret != 0) {
+        return -1;
+    }
+
+    return ret;
+}
+
+int ap0202at_cci_manager_write(sensor_t *sensor, uint16_t register_address, uint8_t* data, uint8_t data_len, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+    int ret = 0;
+    uint16_t host_command_result;
+    bool doorbell;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
+        return -1;
+    }
+    if (doorbell) {
+        return -1;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[3];
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, register_address);
+    if (ret != 0) {
+        return -1;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, data_len);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 3, data, data_len);
+    if (ret != 0) {
+        return -1;
+    }
+
+    // start the command asynchronously.
+    ret = ap0202at_host_command_start_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_WRITE, &host_command_result, timeout_start_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        return -1;
+    }
+
+    // finish the command.
+    ret = ap0202at_host_command_finish_command_asynchronous(sensor, AP0202AT_HC_CMD_CCIMGR_STATUS, &host_command_result, timeout_finish_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
         return -1;
     }
 
@@ -658,14 +1277,14 @@ int ap0202at_reset(sensor_t *sensor) {
     //   configuration mode and is particularly called
     //   out if the Flash-Config mode is used to
     //   indicate that the flash download is complete.
-    if (ap0202at_poll_doorbell_bit(sensor, NULL, 250) != 0) {
+    if (ap0202at_host_command_poll_doorbell_bit_clear(sensor, NULL, 250) != 0) {
         return -1;
     }
 
     // Issue SYSMGR_GET_STATE repeatedly until the result
     //   is not EBUSY.
     for (mp_uint_t start = mp_hal_ticks_ms();;) {
-        if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+        if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
             return -1;
         }
         if (host_command_result != AP0202AT_HC_RESP_EBUSY) {
@@ -700,7 +1319,7 @@ int ap0202at_sensor_discovery(sensor_t *sensor, uint16_t *sensor_id) {
 
     // Perform sensor discovery and fail if no sensor is
     //   found.
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result == AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_RESP_NO_SENSOR) {
@@ -722,21 +1341,39 @@ int ap0202at_sensor_discovery(sensor_t *sensor, uint16_t *sensor_id) {
  * @param sensor 
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_sysmgr_set_state(sensor_t *sensor, uint8_t state) {
+int ap0202at_sysmgr_set_state(sensor_t *sensor, uint8_t state, uint16_t timeout_ms) {
     int ret = 0;
     uint16_t host_command_result;
+    bool doorbell;
 
-    // Issue the SET_STATE command to enter streaming.
-    if(ap0202at_poll_doorbell_bit(sensor, NULL, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
         return -1;
     }
-    if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, state) != 0) {
+    if (doorbell) {
         return -1;
     }
-    if (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_SET_STATE, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+
+    // prepare the parameter pool.
+    uint8_t pool[1];
+    ret = ap0202at_host_command_emplace_parameter_offset_u8(pool, sizeof(pool)/sizeof(pool[0]), 0, state);
+    if (ret != 0) {
         return -1;
     }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
+    
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+
+    // execute the command.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SYSMGR_SET_STATE, &host_command_result, timeout_ms);
+    if (ret != 0) {
+        return -1;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
         return -1;
     }
 
@@ -750,53 +1387,44 @@ int ap0202at_sysmgr_set_state(sensor_t *sensor, uint8_t state) {
  * @param state [output] the current state.
  * @return int 0 on success, -1 on error.
  */
-int ap0202at_sysmgr_get_state(sensor_t *sensor, uint8_t *state) {
+int ap0202at_sysmgr_get_state(sensor_t *sensor, uint8_t *state, uint16_t timeout_ms) {
     int ret = 0;
     uint16_t host_command_result;
+    bool doorbell;
     if (NULL == state) {
         return -1;
     }
 
-    uint8_t pool[2];
-    if  (ap0202at_issue_host_command(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+    // check the doorbell bit, as some other command
+    // may be running.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != 0) {
         return -1;
     }
-    if (ap0202at_read_host_command_result_with_params(sensor, &host_command_result, pool, sizeof(pool), AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if (doorbell) {
+        return -1;
+    }
+
+    // Issue the command.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SYSMGR_GET_STATE, &host_command_result, timeout_ms);
+    if (ret != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        printf("Failed to get state: (err %d)\n", host_command_result);
         return -1;
     }
+
+    // Unload the parameter pool.
+    uint8_t pool[1];
+    ret = ap0202at_host_command_unload_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != 0) {
+        return -1;
+    }
+
+    printf("params out: 0x%02X\n", pool[0]);
 
     // Return the state.
     *state = pool[0];
-
-    return ret;
-}
-
-/**
- * @brief Enter the streaming state.
- * 
- * @param sensor the sensor struct.
- * @return int 0 on success, -1 on error.
- */
-int ap0202at_sysmgr_enter_state_streaming(sensor_t *sensor) {
-    int ret = 0;
-    uint8_t state;
-
-    ret = ap0202at_sysmgr_set_state(sensor, AP0202AT_HCI_SYS_STATE_STREAMING);
-    if (ret != 0) {
-        return -1;
-    }
-
-    ret = ap0202at_sysmgr_get_state(sensor, &state);
-    if (ret != 0) {
-        return -1;
-    }
-    if (state != AP0202AT_HCI_SYS_STATE_STREAMING) {
-        return -1;
-    }
 
     return ret;
 }

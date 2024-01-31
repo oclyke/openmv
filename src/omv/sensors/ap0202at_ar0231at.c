@@ -43,7 +43,7 @@ static int load_apply_patch_0056(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x614) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -80,7 +80,7 @@ static int load_apply_patch_0056(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0614) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -88,7 +88,7 @@ static int load_apply_patch_0056(sensor_t *sensor) {
     }
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 1198
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -108,7 +108,7 @@ static int load_apply_patch_0156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x54) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -143,11 +143,11 @@ static int load_apply_patch_0156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0054) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -167,7 +167,7 @@ static int load_apply_patch_0256(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x620) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -202,11 +202,11 @@ static int load_apply_patch_0256(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0620) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -226,7 +226,7 @@ static int load_apply_patch_0356(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x98) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -261,11 +261,11 @@ static int load_apply_patch_0356(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0098) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -285,7 +285,7 @@ static int load_apply_patch_0456(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x12d0) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -320,11 +320,11 @@ static int load_apply_patch_0456(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x12d0) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -344,7 +344,7 @@ static int load_apply_patch_1156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x118) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -379,11 +379,11 @@ static int load_apply_patch_1156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0118) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -403,7 +403,7 @@ static int load_apply_patch_1356(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x414) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -438,11 +438,11 @@ static int load_apply_patch_1356(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0414) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -462,7 +462,7 @@ static int load_apply_patch_1456(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0xdc) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -497,11 +497,11 @@ static int load_apply_patch_1456(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x00dc) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -521,7 +521,7 @@ static int load_apply_patch_1556(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x1f8) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -556,11 +556,11 @@ static int load_apply_patch_1556(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x01f8) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -580,7 +580,7 @@ static int load_apply_patch_1756(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x60) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -615,11 +615,11 @@ static int load_apply_patch_1756(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0060) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
       return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -639,7 +639,7 @@ static int load_apply_patch_1956(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0xa0) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -674,11 +674,11 @@ static int load_apply_patch_1956(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x00a0) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -698,7 +698,7 @@ static int load_apply_patch_2156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0xb8) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8706, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -733,11 +733,11 @@ static int load_apply_patch_2156(sensor_t *sensor) {
     if (ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x00b8) != 0) {
         return -1;
     }
-    if  (ap0202at_host_command(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8702, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
-    if  (ap0202at_host_command(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, 0x8701, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (!host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -806,7 +806,7 @@ static int sensor_do_sequencer(sensor_t *sensor) {
     uint16_t host_command_result;
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 1042
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_GET_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_GET_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -814,7 +814,7 @@ static int sensor_do_sequencer(sensor_t *sensor) {
     }
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 1043
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     printf("UNCHECKED HOST COMMAND RESULT: host_command_result: %d\n", host_command_result);
@@ -823,7 +823,7 @@ static int sensor_do_sequencer(sensor_t *sensor) {
     // }
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 1047
-    if (ap0202at_write_sensor_u16(sensor, 0x2512,0x8000) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x2512,0x8000, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
@@ -833,7 +833,7 @@ static int sensor_do_sequencer(sensor_t *sensor) {
     }
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 1068
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -850,7 +850,7 @@ static int sensor_post_initialization(sensor_t *sensor) {
     // AP0202AT-REV2_AR0231AT-REV7.ini line 83
 
     // Get the CCIM lock
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_GET_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_GET_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -858,140 +858,140 @@ static int sensor_post_initialization(sensor_t *sensor) {
     }
 
     // AP0202AT-REV2_AR0231AT-REV7.ini line 985
-    if (ap0202at_write_sensor_u16(sensor, 0x318E, 0x0200) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x318E, 0x0200, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3092, 0x0C24) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3092, 0x0C24, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x337A, 0x0C80) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x337A, 0x0C80, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3520, 0x1288) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3520, 0x1288, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3522, 0x880C) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3522, 0x880C, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3524, 0x0C12) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3524, 0x0C12, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x352C, 0x1212) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x352C, 0x1212, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x354A, 0x007F) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x354A, 0x007F, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x350C, 0x055C) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x350C, 0x055C, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     } 
-    if (ap0202at_write_sensor_u16(sensor, 0x3506, 0x3333) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3506, 0x3333, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3508, 0x3333) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3508, 0x3333, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3100, 0x4000) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3100, 0x4000, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3280, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3280, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3282, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3282, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3284, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3284, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3286, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3286, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3288, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3288, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x328A, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x328A, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x328C, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x328C, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x328E, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x328E, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3290, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3290, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3292, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3292, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3294, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3294, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3296, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3296, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x3298, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3298, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x329A, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x329A, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x329C, 0x0FA0) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x329C, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x329E, 0x0FA0) != 0) {
-        return -1;
-    }
-
-    if (ap0202at_write_sensor_u16(sensor, 0x32E6, 0xE0) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x1008, 0x036F) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x100C, 0x058F) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x100E, 0x07AF) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x1010, 0x014F) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x3230, 0x0312) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x3232, 0x0532) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x3234, 0x0752) != 0) {
-        return -1;
-    }
-    if (ap0202at_write_sensor_u16(sensor, 0x3236, 0x0F2) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x329E, 0x0FA0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS,  AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
-    if (ap0202at_write_sensor_u16(sensor, 0x32D0, 0x3A02) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x32E6, 0xE0, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x32D2, 0x3508) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x1008, 0x036F, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x32D4, 0x3702) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x100C, 0x058F, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x32D6, 0x3C04) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x100E, 0x07AF, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x32DC, 0x370A) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x1010, 0x014F, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    if (ap0202at_write_sensor_u16(sensor, 0x0566, 0x3328) != 0) {
+    if (ap0202at_write_sensor_u16(sensor, 0x3230, 0x0312, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x3232, 0x0532, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x3234, 0x0752, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x3236, 0x0F2, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+
+    if (ap0202at_write_sensor_u16(sensor, 0x32D0, 0x3A02, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x32D2, 0x3508, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x32D4, 0x3702, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x32D6, 0x3C04, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x32DC, 0x370A, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+        return -1;
+    }
+    if (ap0202at_write_sensor_u16(sensor, 0x0566, 0x3328, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
 
     // Release the CCIM lock
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -1026,7 +1026,7 @@ static int reset_image_sensor(sensor_t *sensor) {
 
     // Sensor initialization
     // APA0202AT-REV2.ini line 304
-    if  (ap0202at_host_command(sensor, AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS) != 0) {
+    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
@@ -1051,6 +1051,7 @@ static int reset_image_sensor(sensor_t *sensor) {
  */
 static int reset(sensor_t *sensor) {
     int ret = 0;
+    uint8_t state;
     uint16_t sensor_id;
 
     // Reset the AP0202AT
@@ -1082,8 +1083,19 @@ static int reset(sensor_t *sensor) {
     }
 
     // Issue the Change Config command to enter streaming.
-    ret = ap0202at_sysmgr_enter_state_streaming(sensor);
+    ret = ap0202at_sysmgr_set_state(sensor, AP0202AT_HCI_SYS_STATE_STREAMING, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (ret != 0) {
+        printf("Failed to issue set state command.\n");
+        return -1;
+    }
+
+    ret = ap0202at_sysmgr_get_state(sensor, &state, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    if (ret != 0) {
+        printf("Failed to issue get state command\n");
+        return -1;
+    }
+    if (state != AP0202AT_HCI_SYS_STATE_STREAMING) {
+        printf("Failed to enter streaming state. Found state 0x%X instead\n", state);
         return -1;
     }
 
