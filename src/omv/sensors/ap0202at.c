@@ -956,7 +956,8 @@ int ap0202at_cci_manager_get_lock(sensor_t *sensor, uint16_t timeout_start_ms, u
     if (ret != 0) {
         return -1;
     }
-    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+    if ((AP0202AT_HC_RESP_ENOERR != host_command_result)
+        && (AP0202AT_HC_RESP_EALREADY != host_command_result)) {
         return -1;
     }
 
