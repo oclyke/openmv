@@ -10,11 +10,11 @@
 #include "omv_boardconfig.h"
 #if (OMV_ENABLE_AP0202AT_AR0147 == 1)
 
-#include <stdio.h>
-
 #include "py/mphal.h"
 
 #include "sensor.h"
+#include "omv_log.h"
+
 #include "ap0202at.h"
 #include "ap0202at_regs.h"
 #include "ap0202at_ar0231at_patches.h"
@@ -427,7 +427,7 @@ static int sensor_do_sequencer(sensor_t *sensor) {
     if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
         return -1;
     }
-    printf("UNCHECKED HOST COMMAND RESULT: host_command_result: %d\n", host_command_result);
+    LOG_WARNING("UNCHECKED HOST COMMAND RESULT: host_command_result: %d\n", host_command_result);
     // if (host_command_result != AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS_RESP_LOCKED) {
     //     return -1;
     // }
