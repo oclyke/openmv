@@ -1001,44 +1001,44 @@ static int sensor_post_initialization(sensor_t *sensor) {
     return ret;
 }
 
-/**
- * @brief Reset the image sensor into the default state.
- * 
- * @param sensor the sensor struct.
- * @return int 0 on success, -1 on error.
- */
-static int reset_image_sensor(sensor_t *sensor) {
-    int ret = 0;
-    uint16_t host_command_result;
+// /**
+//  * @brief Reset the image sensor into the default state.
+//  * 
+//  * @param sensor the sensor struct.
+//  * @return int 0 on success, -1 on error.
+//  */
+// static int reset_image_sensor(sensor_t *sensor) {
+//     int ret = 0;
+//     uint16_t host_command_result;
 
-    if (ap0202at_write_reg_masked(
-            sensor,
-            AP0202AT_VAR_SENSOR_MGR_MODE,
-            AP0202AT_VAR_SENSOR_MGR_SENSOR_DEFAULT_SEQUENCER_LOAD_INHIBIT_TRUE,
-            AP0202AT_VAR_SENSOR_MGR_SENSOR_DEFAULT_SEQUENCER_LOAD_INHIBIT_MASK
-        ) != 0) {
-        return -1;
-    }
+//     if (ap0202at_write_reg_masked(
+//             sensor,
+//             AP0202AT_VAR_SENSOR_MGR_MODE,
+//             AP0202AT_VAR_SENSOR_MGR_SENSOR_DEFAULT_SEQUENCER_LOAD_INHIBIT_TRUE,
+//             AP0202AT_VAR_SENSOR_MGR_SENSOR_DEFAULT_SEQUENCER_LOAD_INHIBIT_MASK
+//         ) != 0) {
+//         return -1;
+//     }
 
-    if (sensor_do_sequencer(sensor) != 0) {
-        return -1;
-    }
+//     if (sensor_do_sequencer(sensor) != 0) {
+//         return -1;
+//     }
 
-    // Sensor initialization
-    // APA0202AT-REV2.ini line 304
-    if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
+//     // Sensor initialization
+//     // APA0202AT-REV2.ini line 304
+//     if  (ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS) != 0) {
+//         return -1;
+//     }
+//     if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
+//         return -1;
+//     }
 
-    if (sensor_post_initialization(sensor) != 0) {
-        return -1;
-    }
+//     if (sensor_post_initialization(sensor) != 0) {
+//         return -1;
+//     }
 
-    return ret;
-}
+//     return ret;
+// }
 
 /**
  * @brief Reset the AP0202AT ISP and the AR0147 into the
@@ -1050,56 +1050,65 @@ static int reset_image_sensor(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int reset(sensor_t *sensor) {
-    int ret = 0;
-    uint8_t state;
-    uint16_t sensor_id;
+    return -1;
 
-    // Reset the AP0202AT
-    // APA0202AT-REV2.ini line 298
-    ret = ap0202at_reset(sensor);
-    if (ret != 0) {
-        return -1;
-    }
+    // some unused functions that cause errors
+    (void)sensor_do_sequencer;
+    (void)sensor_post_initialization;
+    (void)load_patches;
+    
+    // int ret = 0;
+    // uint8_t state;
 
-    // Load patches for the AP0202AT ISP.
-    if(load_patches(sensor) != 0) {
-        return -1;
-    }
-
-    // Perform sensor discovery and fail if no sensor is
-    //   found.
-    ret = ap0202at_sensor_discovery(sensor, &sensor_id);
-    if (ret != 0) {
-        return -1;
-    }
-    printf("UNUSED SENSOR ID: sensor_id: %d\n", sensor_id);
-    // if (sensor_id != AR0231AT_SENSOR_ID) {
+    // // Reset the AP0202AT
+    // // APA0202AT-REV2.ini line 298
+    // ret = ap0202at_reset(sensor);
+    // if (ret != 0) {
     //     return -1;
     // }
 
-    // Perform sensor configuration.
-    if(reset_image_sensor(sensor) != 0) {
-        return -1;
-    }
+    // // Load patches for the AP0202AT ISP.
+    // if(load_patches(sensor) != 0) {
+    //     return -1;
+    // }
 
-    // Issue the Change Config command to enter streaming.
-    ret = ap0202at_sysmgr_set_state(sensor, AP0202AT_HCI_SYS_STATE_STREAMING, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != 0) {
-        printf("Failed to issue set state command.\n");
-        return -1;
-    }
+    // // Perform sensor discovery and fail if no sensor is
+    // //   found.
+    // uint8_t cci_address;
+    // uint8_t revision;
+    // uint16_t model_id;
+    // ret = ap0202at_sensor_manager_discover_sensor(sensor, &cci_address, &revision, &model_id, 100);
+    // if (ret != 0) {
+    //     // printf("Failed to discover sensor\n");
+    //     return -1;
+    // }
+    // // printf("Discovered sensor at 0x%0X\n", cci_address);
+    // // printf("Sensor revision: 0x%0X\n", revision);
+    // // printf("Sensor model ID: 0x%04X\n", model_id);
 
-    ret = ap0202at_sysmgr_get_state(sensor, &state, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != 0) {
-        printf("Failed to issue get state command\n");
-        return -1;
-    }
-    if (state != AP0202AT_HCI_SYS_STATE_STREAMING) {
-        printf("Failed to enter streaming state. Found state 0x%X instead\n", state);
-        return -1;
-    }
+    // // Perform sensor configuration.
+    // if(reset_image_sensor(sensor) != 0) {
+    //     return -1;
+    // }
 
-    return ret;
+    // // Issue the Change Config command to enter streaming.
+    // ret = ap0202at_sysmgr_set_state(sensor, AP0202AT_HCI_SYS_STATE_STREAMING, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != 0) {
+    //     // printf("Failed to issue set state command.\n");
+    //     return -1;
+    // }
+
+    // ret = ap0202at_sysmgr_get_state(sensor, &state, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != 0) {
+    //     // printf("Failed to issue get state command\n");
+    //     return -1;
+    // }
+    // if (state != AP0202AT_HCI_SYS_STATE_STREAMING) {
+    //     // printf("Failed to enter streaming state. Found state 0x%X instead\n", state);
+    //     return -1;
+    // }
+
+    // return ret;
 }
 
 /**

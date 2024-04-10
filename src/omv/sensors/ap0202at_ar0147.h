@@ -13,5 +13,6 @@
 #include "ap0202at.h"
 
 int ap0202at_ar0147_init(sensor_t *sensor);
+int ap0202at_ar0147_init0(sensor_t *sensor);
 
 #endif // __AP0202AT_AR0147_H__

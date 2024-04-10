@@ -13,7 +13,7 @@
 // VARIABLE SHORTCUTS
 #define AP0202AT_VARIABLE(page, offset)                          (0x8000 | ((page) << 10) | (offset))
 
-// COMMAND_REGISTER SHORTCUTS
+// COMMAND_REGISTER SHORTCUTS (AND9930/D)
 #define AP0202AT_HC_CMD_SYSMGR_SET_STATE                          (0x8100)
 #define AP0202AT_HC_CMD_SYSMGR_GET_STATE                          (0x8101)
 
@@ -27,7 +27,11 @@
 
 #define AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_SENSOR                (0x8E00)
 #define AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR              (0x8E01)
-#define AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_RESP_NO_SENSOR        (0xFFFF)
+
+#define AP0202AT_HC_CMD_PATCHLDR_LOAD_PATCH                       (0x8700)
+#define AP0202AT_HC_CMD_PATCHLDR_STATUS                           (0x8701)
+#define AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH                      (0x8702)
+#define AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM                      (0x8706)
 
 #define AP0202AT_HC_CMD_CCIMGR_GET_LOCK                           (0x8D00)
 #define AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS                        (0x8D01)
