@@ -113,85 +113,28 @@ static int install_sensor_reg_write_workaround(sensor_t *sensor) {
  */
 static int load_apply_patch_28d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    const uint16_t ram_addr = 0x5d8;
+    const uint16_t patch_size = 0x2364;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1114
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x5d8);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x2364);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1121
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x4d28);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_28d4_data, sizeof(patch_28d4_data) / sizeof(patch_28d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4d28, patch_28d4_data, sizeof(patch_28d4_data) / sizeof(patch_28d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1316
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x2504);
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x2504, 0x28d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x28d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x2364);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        // printf("Error: host command result not AP0202AT_HC_RESP_ENOERR. Line: %d\n", __LINE__);
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 1327
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        // printf("Error: host command status not STATUS_SUCCESS. Line: %d\n", __LINE__);
-        // printf("Status: %d\n", status);
-        ap0202at_print_status(status);
-        // printf(" \n"); // space here avoids "undefined reference to putchar" error
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        // printf("Error: host command result not AP0202AT_HC_RESP_ENOERR. Line: %d\n", __LINE__);
-        // printf("Result: %d\n", host_command_result);
         return -1;
     }
 
@@ -208,78 +151,25 @@ static int load_apply_patch_28d4(sensor_t *sensor) {
  */
 static int load_apply_patch_01d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0x0;
+    uint16_t patch_size = 0x54;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 829
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x0);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x54);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
 
     // APA0202AT-REV2_AR0147-REV3.ini line 836
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x4750);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_01d4_data, sizeof(patch_01d4_data) / sizeof(patch_01d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4750, patch_01d4_data, sizeof(patch_01d4_data) / sizeof(patch_01d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 843
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x0030);
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x0030, 0x01d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x01d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0054);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 854
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
@@ -296,78 +186,28 @@ static int load_apply_patch_01d4(sensor_t *sensor) {
  */
 static int load_apply_patch_03d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0x54;
+    uint16_t patch_size = 0x98;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 867
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x54);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x98);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 874
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x47a4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_03d4_data, sizeof(patch_03d4_data) / sizeof(patch_03d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x47a4, patch_03d4_data, sizeof(patch_03d4_data) / sizeof(patch_03d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 884
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x00c8);
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x00c8, 0x03d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x03d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0098);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 894
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
@@ -385,80 +225,27 @@ static int load_apply_patch_03d4(sensor_t *sensor) {
  */
 static int load_apply_patch_11d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0xec;
+    uint16_t patch_size = 0x118;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 907
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x0ec);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x118);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 914
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x483c);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_11d4_data, sizeof(patch_11d4_data) / sizeof(patch_11d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x483c, patch_11d4_data, sizeof(patch_11d4_data) / sizeof(patch_11d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 925
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x019c);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x11d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0118);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 936
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x019c, 0x11d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
 
     return 0;
 }
@@ -474,80 +261,27 @@ static int load_apply_patch_11d4(sensor_t *sensor) {
  */
 static int load_apply_patch_21d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0x4e0;
+    uint16_t patch_size = 0xb8;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1036
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x4e0);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0xb8);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1044
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x4c30);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_21d4_data, sizeof(patch_21d4_data) / sizeof(patch_21d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4c30, patch_21d4_data, sizeof(patch_21d4_data) / sizeof(patch_21d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1054
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x056c);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x21d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x00b8);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 1064
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x056c, 0x21d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
 
     return 0;
 }
@@ -562,78 +296,28 @@ static int load_apply_patch_21d4(sensor_t *sensor) {
  */
 static int load_apply_patch_37d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0x293c;
+    uint16_t patch_size = 0x218;
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1434
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x293c);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x218);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1441
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x708c);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_37d4_data, sizeof(patch_37d4_data) / sizeof(patch_37d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x708c, patch_37d4_data, sizeof(patch_37d4_data) / sizeof(patch_37d4_data[0]));
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1459
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x2b30);
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x2b30, 0x37d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x37d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x0218);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 1469
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
@@ -650,78 +334,28 @@ static int load_apply_patch_37d4(sensor_t *sensor) {
  */
 static int load_apply_patch_39d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t host_command_result;
+    uint16_t ram_addr = 0x2b04;
+    uint16_t patch_size = 0xac;
 
     // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x2b04);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0xac);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
-        return -1;
-    }
-
-    // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, 0x72a4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_patch(sensor, patch_39d4_data, sizeof(patch_39d4_data) / sizeof(patch_39d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
         return -1;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0, 0x2bd8);
+    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x72a4, patch_39d4_data, sizeof(patch_39d4_data) / sizeof(patch_39d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_1, 0x39d4);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_2, 0xa103);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_3, 0x0204);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_4, 0x00ac);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 
-    status = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_STATUS, &host_command_result, APPLY_PATCH_TIMEOUT_MS);
+    // APA0202AT-REV2_AR0147-REV3.ini line
+    status = ap0202at_patch_manager_apply_patch(
+        sensor,
+        0x2bd8, 0x39d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    );
     if (STATUS_SUCCESS != status) {
-        return -1;
-    }
-    if (host_command_result != AP0202AT_HC_RESP_ENOERR) {
         return -1;
     }
 
@@ -831,8 +465,7 @@ int ap0202at_ar0147_init0(sensor_t *sensor) {
 //  */
 // static int reset_image_sensor(sensor_t *sensor) {
 //     int ret = 0;
-//     uint16_t host_command_result;
-
+// 
 //     // The only image sensor supported is the AR0147.
 //     if (false) {
 //         return -1;
