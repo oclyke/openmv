@@ -17,7 +17,7 @@
  * on a separate I2C bus.
  */
 #include "omv_boardconfig.h"
-#if (OMV_ENABLE_AP0202AT == 1)
+#if (OMV_AP0202AT_ENABLE == 1)
 
 #include "sensor.h"
 
@@ -1726,4 +1726,4 @@ ap0202at_status_t ap0202at_init(sensor_t *sensor) {
     return 0;
 }
 
-#endif // (OMV_ENABLE_AP0202AT == 1)
+#endif // (OMV_AP0202AT_ENABLE == 1)

@@ -8,7 +8,7 @@
  * AR0147 w/ AP0202AT ISP driver.
  */
 #include "omv_boardconfig.h"
-#if (OMV_ENABLE_AP0202AT_AR0147 == 1)
+#if (OMV_AP0202AT_AR0147_ENABLE == 1)
 
 #include "sensor.h"
 #include "omv_log.h"
@@ -656,4 +656,4 @@ int ap0202at_ar0147_init(sensor_t *sensor) {
     return 0;
 }
 
-#endif // (OMV_ENABLE_AP0202AT_AR0147 == 1)
+#endif // (OMV_AP0202AT_AR0147_ENABLE == 1)
