@@ -18,6 +18,10 @@
 // Range 24 to 30 MHz does not require PLL reconfiguration.
 #define AP0202AT_XCLK_FREQ    (24000000)
 
+// This is the magic firmware ID that the patch loader expects.
+// (Determined from AND9930-D / .ini files)
+#define PATCHLDR_MAGIC_FIRMWARE_ID (0xa1030204)
+
 // Status codes.
 typedef enum {
     STATUS_SUCCESS = 0,
@@ -38,7 +42,6 @@ ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, 
 ap0202at_status_t ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t data);
 ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr, uint16_t data, uint16_t mask);
 ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *data, uint16_t data_words);
-ap0202at_status_t ap0202at_write_patch(sensor_t* sensor, const uint16_t *data, uint16_t data_words);
 
 // host command interface (HCI)
 ap0202at_status_t ap0202at_host_command_emplace_parameter_offset_u8(uint8_t* pool, size_t pool_len, size_t offset, uint8_t param);
@@ -55,8 +58,9 @@ ap0202at_status_t ap0202at_host_command_finish_command_asynchronous(sensor_t *se
 // patch loader interface (PLI)
 ap0202at_status_t ap0202at_patch_manager_load_patch(sensor_t *sensor, const uint16_t patch_index, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
 ap0202at_status_t ap0202at_patch_manager_get_status(sensor_t *sensor, uint16_t* result, uint16_t timeout_ms);
-ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t* loader_address, uint16_t* patch_id, uint32_t* firmware_id, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
+ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t loader_address, uint16_t patch_id, uint32_t firmware_id, uint16_t patch_size, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
 ap0202at_status_t ap0202at_patch_manager_reserve_ram(sensor_t *sensor, uint16_t start_address, uint16_t size_bytes, uint16_t timeout_ms);
+ap0202at_status_t ap0202at_patch_manager_write_patch_to_ram(sensor_t* sensor, const uint16_t address, const uint16_t *data, uint16_t data_words);
 
 // camera control interface (CCI)
 ap0202at_status_t ap0202at_cci_manager_get_lock(sensor_t *sensor, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);

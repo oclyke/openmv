@@ -240,8 +240,28 @@ ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *d
  * @return ap0202at_status_t.
  * 
  */
-ap0202at_status_t ap0202at_write_patch(sensor_t* sensor, const uint16_t *data, uint16_t data_words) {
-    return ap0202at_write_reg_burst_addr_24(sensor, (uint16_t*)data, data_words);
+ap0202at_status_t ap0202at_patch_manager_write_patch_to_ram(sensor_t* sensor, const uint16_t address, const uint16_t *data, uint16_t data_words) {
+    ap0202at_status_t status = STATUS_SUCCESS;
+
+    // APA0202AT-REV2_AR0147-REV3.ini line 874
+    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
+    if (STATUS_SUCCESS != status) {
+        return -1;
+    }
+    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, address);
+    if (STATUS_SUCCESS != status) {
+        return -1;
+    }
+    status = ap0202at_write_reg_burst_addr_24(sensor, (uint16_t*)data, data_words);
+    if (STATUS_SUCCESS != status) {
+        return -1;
+    }
+    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    if (STATUS_SUCCESS != status) {
+        return -1;
+    }
+
+    return status;
 }
 
 ap0202at_status_t ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t port_address, uint16_t data, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
@@ -926,15 +946,48 @@ ap0202at_status_t ap0202at_patch_manager_get_status(sensor_t *sensor, uint16_t* 
  * @brief Requests that the Patch Loader applies a patch stored in RAM.
  * 
  * @param sensor pointer to the sensor struct.
- * @param loader_address [output] the address of the
+ * @param loader_address the address of the
  * loader in RAM.
- * @param patch_id [output] the patch ID.
- * @param firmware_id [output] the firmware ID.
+ * @param patch_id the patch ID.
+ * @param firmware_id the firmware ID.
+ * @param ram_addr the address in RAM where the patch is stored.
  * @return ap0202at_status_t 
  */
-ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t* loader_address, uint16_t* patch_id, uint32_t* firmware_id, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t loader_address, uint16_t patch_id, uint32_t firmware_id, uint16_t patch_size, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
     ap0202at_status_t ret = STATUS_SUCCESS;
     uint16_t host_command_result;
+    bool doorbell;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (ret != STATUS_SUCCESS) {
+        return ret;
+    }
+    if (doorbell) {
+        return STATUS_ERROR_DOORBELL;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[10];
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, loader_address);
+    if (ret != STATUS_SUCCESS) {
+        return ret;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, patch_id);
+    if (ret != STATUS_SUCCESS) {
+        return ret;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u32(pool, sizeof(pool)/sizeof(pool[0]), 4, firmware_id);
+    if (ret != STATUS_SUCCESS) {
+        return ret;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 8, patch_size);
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (ret != STATUS_SUCCESS) {
+        return ret;
+    }
 
     // start the command asynchronously.
     ret = ap0202at_host_command_start_command_asynchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH, &host_command_result, timeout_start_ms);
@@ -953,34 +1006,6 @@ ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t*
     }
     if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
         return ret;
-    }
-
-    // unload the parameter pool.
-    uint8_t pool[8];
-    ret = ap0202at_host_command_unload_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
-
-    if (NULL != loader_address) {
-        ret = ap0202at_host_command_extract_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, loader_address);
-        if (ret != STATUS_SUCCESS) {
-            return ret;
-        }
-    }
-
-    if (NULL != patch_id) {
-        ret = ap0202at_host_command_extract_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, patch_id);
-        if (ret != STATUS_SUCCESS) {
-            return ret;
-        }
-    }
-
-    if (NULL != firmware_id) {
-        ret = ap0202at_host_command_extract_parameter_offset_u32(pool, sizeof(pool)/sizeof(pool[0]), 4, firmware_id);
-        if (ret != STATUS_SUCCESS) {
-            return ret;
-        }
     }
 
     return ret;
