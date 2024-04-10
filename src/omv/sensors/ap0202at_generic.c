@@ -22,6 +22,8 @@
 #include "py/mphal.h"
 
 #include "sensor.h"
+#include "omv_log.h"
+
 #include "ap0202at.h"
 #include "ap0202at_regs.h"
 #include "ap0202at_ar0147.h"
@@ -75,18 +77,14 @@ int ap0202at_detect_sensor_ar0147(sensor_t *sensor, bool *detected) {
 
     ret = ap0202at_ar0147_init0(sensor);
     if (0 != ret) {
-        // printf("Error during init0: ");
-        ap0202at_print_status(ret);
-        // printf(" \n"); // space here avoids "undefined reference to putchar" error
+        LOG_ERROR("init0 failed: %d (%s)\n", ret, ap0202at_status_to_string(ret));
         return ret;
     }
 
     // printf("Waiting for doorbell clear\n");
     ret = ap0202at_host_command_poll_doorbell_bit_clear(sensor, NULL, 500);
     if (0 != ret) {
-        // printf("Error polling doorbell bit clear: ");
-        ap0202at_print_status(ret);
-        // printf(" \n"); // space here avoids "undefined reference to putchar" error
+        LOG_ERROR("Error polling doorbell bit: %d (%s)\n", ret, ap0202at_status_to_string(ret));
         return ret;
     }
 
@@ -95,14 +93,13 @@ int ap0202at_detect_sensor_ar0147(sensor_t *sensor, bool *detected) {
     uint16_t model_id;
     ret = ap0202at_sensor_manager_discover_sensor(sensor, &cci_address, &revision, &model_id, 3000);
     if (0 != ret) {
-        // printf("Error discovering sensor: ");
-        ap0202at_print_status(ret);
-        // printf(" \n"); // space here avoids "undefined reference to putchar" error
+        LOG_ERROR("Error discovering sensor: %d (%s)\n", ret, ap0202at_status_to_string(ret));
         return ret;
     }
-    // printf("Discovered sensor at 0x%0X\n", cci_address);
-    // printf("Sensor revision: 0x%0X\n", revision);
-    // printf("Sensor model ID: 0x%04X\n", model_id);
+    
+    LOG_DEBUG("Discovered sensor at 0x%0X\n", cci_address);
+    LOG_DEBUG("Sensor revision: 0x%0X\n", revision);
+    LOG_DEBUG("Sensor model ID: 0x%04X\n", model_id);
 
     return ret;
 }

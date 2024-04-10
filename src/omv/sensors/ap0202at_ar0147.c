@@ -10,9 +10,8 @@
 #include "omv_boardconfig.h"
 #if (OMV_ENABLE_AP0202AT_AR0147 == 1)
 
-#include <stdio.h>
-
 #include "sensor.h"
+#include "omv_log.h"
 
 #include "py/mphal.h"
 
@@ -119,13 +118,15 @@ static int load_apply_patch_28d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 1114
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("reserve_ram failed: %d (%s)\n", status, ap0202at_status_to_string(status));
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1121
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4d28, patch_28d4_data, sizeof(patch_28d4_data) / sizeof(patch_28d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("write_patch_to_ram failed: %d (%s)\n", status, ap0202at_status_to_string(status));
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1316
@@ -135,10 +136,11 @@ static int load_apply_patch_28d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("apply_patch failed: %d (%s)\n", status, ap0202at_status_to_string(status));
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 /**
@@ -160,7 +162,7 @@ static int load_apply_patch_01d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 836
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4750, patch_01d4_data, sizeof(patch_01d4_data) / sizeof(patch_01d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 843
@@ -170,10 +172,10 @@ static int load_apply_patch_01d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 /**
@@ -192,13 +194,13 @@ static int load_apply_patch_03d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 867
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 874
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x47a4, patch_03d4_data, sizeof(patch_03d4_data) / sizeof(patch_03d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 884
@@ -208,10 +210,10 @@ static int load_apply_patch_03d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 
@@ -231,13 +233,13 @@ static int load_apply_patch_11d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 907
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 914
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x483c, patch_11d4_data, sizeof(patch_11d4_data) / sizeof(patch_11d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 925
@@ -247,7 +249,7 @@ static int load_apply_patch_11d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
 
-    return 0;
+    return status;
 }
 
 
@@ -267,13 +269,13 @@ static int load_apply_patch_21d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 1036
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1044
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4c30, patch_21d4_data, sizeof(patch_21d4_data) / sizeof(patch_21d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1054
@@ -283,7 +285,7 @@ static int load_apply_patch_21d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
 
-    return 0;
+    return status;
 }
 
 /**
@@ -302,13 +304,13 @@ static int load_apply_patch_37d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line 1434
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1441
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x708c, patch_37d4_data, sizeof(patch_37d4_data) / sizeof(patch_37d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1459
@@ -318,10 +320,10 @@ static int load_apply_patch_37d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 /**
@@ -340,13 +342,13 @@ static int load_apply_patch_39d4(sensor_t *sensor) {
     // APA0202AT-REV2_AR0147-REV3.ini line
     status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line
     status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x72a4, patch_39d4_data, sizeof(patch_39d4_data) / sizeof(patch_39d4_data[0]));
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line
@@ -356,10 +358,10 @@ static int load_apply_patch_39d4(sensor_t *sensor) {
         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
-        return -1;
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 /**
@@ -375,49 +377,49 @@ static int load_patches(sensor_t *sensor) {
     // Patch 28d4
     ret = load_apply_patch_28d4(sensor);
     if (ret != 0) {
-        // printf("patch 28d4 failed\n");
+        LOG_ERROR("patch 28d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 01d4
     ret = load_apply_patch_01d4(sensor);
     if (ret != 0) {
-        // printf("patch 01d4 failed\n");
+        LOG_ERROR("patch 01d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 03d4
     ret = load_apply_patch_03d4(sensor);
     if (ret != 0) {
-        // printf("patch 03d4 failed\n");
+        LOG_ERROR("patch 03d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 11d4
     ret = load_apply_patch_11d4(sensor);
     if (ret != 0) {
-        // printf("patch 11d4 failed\n");
+        LOG_ERROR("patch 11d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 21d4
     ret = load_apply_patch_21d4(sensor);
     if (ret != 0) {
-        // printf("patch 21d4 failed\n");
+        LOG_ERROR("patch 21d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 37d4
     ret = load_apply_patch_37d4(sensor);
     if (ret != 0) {
-        // printf("patch 37d4 failed\n");
+        LOG_ERROR("patch 37d4 failed %d\n", ret);
         return ret;
     }
 
     // Patch 39d4
     ret = load_apply_patch_39d4(sensor);
     if (ret != 0) {
-        // printf("patch 39d4 failed\n");
+        LOG_ERROR("patch 39d4 failed %d\n", ret);
         return ret;
     }
 
@@ -444,13 +446,13 @@ int ap0202at_ar0147_init0(sensor_t *sensor) {
 
     ret = install_sensor_reg_write_workaround(sensor);
     if (ret != 0) {
-        // printf("install_sensor_reg_write_workaround failed\n");
+        LOG_ERROR("install_sensor_reg_write_workaround failed %d\n", ret);
         return ret;
     }
 
     ret = load_patches(sensor);
     if (ret != 0) {
-        // printf("load_patches failed\n");
+        LOG_ERROR("load_patches failed\n");
         return ret;
     }
 

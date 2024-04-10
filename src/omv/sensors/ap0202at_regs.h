@@ -13,39 +13,6 @@
 // VARIABLE SHORTCUTS
 #define AP0202AT_VARIABLE(page, offset)                          (0x8000 | ((page) << 10) | (offset))
 
-// COMMAND_REGISTER SHORTCUTS (AND9930/D)
-#define AP0202AT_HC_CMD_SYSMGR_SET_STATE                          (0x8100)
-#define AP0202AT_HC_CMD_SYSMGR_GET_STATE                          (0x8101)
-
-#define AP0202AT_HC_CMD_SEQ_REFRESH                               (0x8606)
-#define AP0202AT_HC_CMD_SEQ_REFRESH_STATUS                        (0x8607)
-
-#define AP0202AT_HC_CMD_GPIO_SET_PROP                             (0x8400)
-#define AP0202AT_HC_CMD_GPIO_GET_PROP                             (0x8401)
-#define AP0202AT_HC_CMD_GPIO_SET_STATE                            (0x8402)
-#define AP0202AT_HC_CMD_GPIO_GET_STATE                            (0x8403)
-
-#define AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_SENSOR                (0x8E00)
-#define AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR              (0x8E01)
-
-#define AP0202AT_HC_CMD_PATCHLDR_LOAD_PATCH                       (0x8700)
-#define AP0202AT_HC_CMD_PATCHLDR_STATUS                           (0x8701)
-#define AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH                      (0x8702)
-#define AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM                      (0x8706)
-
-#define AP0202AT_HC_CMD_CCIMGR_GET_LOCK                           (0x8D00)
-#define AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS                        (0x8D01)
-#define AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK                       (0x8D02)
-#define AP0202AT_HC_CMD_CCIMGR_CONFIG                             (0x8D03)
-#define AP0202AT_HC_CMD_CCIMGR_SET_DEVICE                         (0x8D04)
-#define AP0202AT_HC_CMD_CCIMGR_READ                               (0x8D05)
-#define AP0202AT_HC_CMD_CCIMGR_WRITE                              (0x8D06)
-#define AP0202AT_HC_CMD_CCIMGR_WRITE_BITFIELD                     (0x8D07)
-#define AP0202AT_HC_CMD_CCIMGR_STATUS                             (0x8D08)
-
-#define AP0202AT_HC_CMD_STEMGR_CONFIG                             (0x8310)
-#define AP0202AT_HC_CMD_STEMGR_WRITE_CONFIG                       (0x8313)
-
 // AND9930/D Table 3. Response Codes
 #define AP0202AT_HC_RESP_ENOERR   (0)
 #define AP0202AT_HC_RESP_ENOENT   (1)
@@ -64,6 +31,45 @@
 #define AP0202AT_HC_RESP_ERANGE   (14)
 #define AP0202AT_HC_RESP_ENOSYS   (15)
 #define AP0202AT_HC_RESP_EALREADY (16)
+
+// AND9930/D Table 8. System Manager Host Commands
+#define AP0202AT_HC_CMD_SYSMGR_SET_STATE                          (0x8100)
+#define AP0202AT_HC_CMD_SYSMGR_GET_STATE                          (0x8101)
+
+// AND9930/D Table 172. Sequencer Host Commands
+#define AP0202AT_HC_CMD_SEQ_REFRESH                               (0x8606)
+#define AP0202AT_HC_CMD_SEQ_REFRESH_STATUS                        (0x8607)
+
+// AND9930/D Table 105. GPIO Host Commands
+#define AP0202AT_HC_CMD_GPIO_SET_PROP                             (0x8400)
+#define AP0202AT_HC_CMD_GPIO_GET_PROP                             (0x8401)
+#define AP0202AT_HC_CMD_GPIO_SET_STATE                            (0x8402)
+#define AP0202AT_HC_CMD_GPIO_GET_STATE                            (0x8403)
+
+// AND9930/D Table 245. Sensor Manager Host Commands
+#define AP0202AT_HC_CMD_SENSOR_MGR_DISCOVER_SENSOR                (0x8E00)
+#define AP0202AT_HC_CMD_SENSOR_MGR_INITIALIZE_SENSOR              (0x8E01)
+
+// AND9930/D Table 177. Patch Loader Host Commands
+#define AP0202AT_HC_CMD_PATCHLDR_LOAD_PATCH                       (0x8700)
+#define AP0202AT_HC_CMD_PATCHLDR_STATUS                           (0x8701)
+#define AP0202AT_HC_CMD_PATCHLDR_APPLY_PATCH                      (0x8702)
+#define AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM                      (0x8706)
+
+// AND9930/D Table 219. CCI Manager Host Commands
+#define AP0202AT_HC_CMD_CCIMGR_GET_LOCK                           (0x8D00)
+#define AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS                        (0x8D01)
+#define AP0202AT_HC_CMD_CCIMGR_RELEASE_LOCK                       (0x8D02)
+#define AP0202AT_HC_CMD_CCIMGR_CONFIG                             (0x8D03)
+#define AP0202AT_HC_CMD_CCIMGR_SET_DEVICE                         (0x8D04)
+#define AP0202AT_HC_CMD_CCIMGR_READ                               (0x8D05)
+#define AP0202AT_HC_CMD_CCIMGR_WRITE                              (0x8D06)
+#define AP0202AT_HC_CMD_CCIMGR_WRITE_BITFIELD                     (0x8D07)
+#define AP0202AT_HC_CMD_CCIMGR_STATUS                             (0x8D08)
+
+// AND9930/D Table 93. STE Manager Host Commands
+#define AP0202AT_HC_CMD_STEMGR_CONFIG                             (0x8310)
+#define AP0202AT_HC_CMD_STEMGR_WRITE_CONFIG                       (0x8313)
 
 // AND9930/D Table 5. System Manager Permanent States
 #define AP0202AT_HCI_SYS_STATE_IDLE                               (0x20)

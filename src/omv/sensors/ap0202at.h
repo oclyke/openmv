@@ -34,8 +34,8 @@ typedef enum {
     STATUS_SOURCE_EXTERNAL = 0x80,
 } ap0202at_status_t;
 
-// SHow human-readable status.
-void ap0202at_print_status(ap0202at_status_t status);
+// Get human-readable status string.
+const char* ap0202at_status_to_string(ap0202at_status_t status);
 
 // register access
 ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data);

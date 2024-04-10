@@ -14,6 +14,7 @@
 #include "omv_i2c.h"
 #include "imlib.h"
 
+// Sensor I2C addresses in 8-bit format.
 #define OV2640_SLV_ADDR         (0x60)
 #define OV5640_SLV_ADDR         (0x78)
 #define OV7725_SLV_ADDR         (0x42)
