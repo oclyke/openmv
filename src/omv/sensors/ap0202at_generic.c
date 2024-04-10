@@ -24,6 +24,8 @@
 #include "sensor.h"
 #include "ap0202at.h"
 #include "ap0202at_regs.h"
+#include "ap0202at_ar0147.h"
+#include "ap0202at_ar0231at.h"
 
 #include "ar0147_regs.h"
 #include "ar0231at_regs.h"
@@ -71,57 +73,36 @@ int ap0202at_detect_sensor_ar0147(sensor_t *sensor, bool *detected) {
         return -1;
     }
 
-    // for OpenMV AR0147 sensor module
-    const uint8_t ar0147_i2c_addr_w = 0x20;
-
-    printf("Attempting to detect AR0147 sensor...\n");
-
-    // 1. acquire the ccim lock (AP0202AT_HC_CMD_CCIMGR_GET_LOCK)
-    // 2. poll until lock is acquired successfully (AP0202AT_HC_CMD_CCIMGR_LOCK_STATUS, AP0202AT_HC_RESP_ENOERR)
-    // 3. set the proper i2c clock speed AP0202AT_HC_CMD_CCIMGR_CONFIG
-    // 4. set the correct i2c address w/ AP0202AT_HC_CMD_CCIMGR_SET_DEVICE
-
-    // acquire the ccim lock
-    ret = ap0202at_cci_manager_get_lock(sensor, 100, 100);
+    ret = ap0202at_ar0147_init0(sensor);
     if (0 != ret) {
-        printf("Error acquiring CCIM lock\n");
+        // printf("Error during init0: ");
+        ap0202at_print_status(ret);
+        // printf(" \n"); // space here avoids "undefined reference to putchar" error
         return ret;
     }
 
-    // ret = ap0202at_cci_manager_config(sensor, 400000, 100);
-    // if (0 != ret) {
-    //     printf("Error configuring CCIM\n");
-    //     return ret;
-    // }
-
-    // set the i2c device
-    ret = ap0202at_cci_manager_set_device(sensor, ar0147_i2c_addr_w, 100);
+    // printf("Waiting for doorbell clear\n");
+    ret = ap0202at_host_command_poll_doorbell_bit_clear(sensor, NULL, 500);
     if (0 != ret) {
-        printf("Error setting CCIM device\n");
+        // printf("Error polling doorbell bit clear: ");
+        ap0202at_print_status(ret);
+        // printf(" \n"); // space here avoids "undefined reference to putchar" error
         return ret;
     }
 
-    // read the sensor ID
-    uint8_t data[2];
-    ret = ap0202at_cci_manager_read(sensor, AR0147_REG_CHIP_VERSION_REG, data, 2, 100, 100);
+    uint8_t cci_address;
+    uint8_t revision;
+    uint16_t model_id;
+    ret = ap0202at_sensor_manager_discover_sensor(sensor, &cci_address, &revision, &model_id, 3000);
     if (0 != ret) {
-        printf("Error reading from CCIM\n");
+        // printf("Error discovering sensor: ");
+        ap0202at_print_status(ret);
+        // printf(" \n"); // space here avoids "undefined reference to putchar" error
         return ret;
     }
-    uint16_t sensor_id = (data[0] << 8) | data[1];
-    printf("Sensor ID: 0x%04X\n", sensor_id);
-
-    // check whether the correct sensor was detected
-    if (sensor_id == AR0147_CHIP_VERSION_REG_DEFAULT) {
-        *detected = true;
-    }
-
-    // release the ccim lock
-    ret = ap0202at_cci_manager_release_lock(sensor, 100);
-    if (0 != ret) {
-        printf("Error releasing CCIM lock\n");
-        return ret;
-    }
+    // printf("Discovered sensor at 0x%0X\n", cci_address);
+    // printf("Sensor revision: 0x%0X\n", revision);
+    // printf("Sensor model ID: 0x%04X\n", model_id);
 
     return ret;
 }
@@ -132,7 +113,7 @@ int ap0202at_detect_sensor_ar0231at(sensor_t *sensor, bool *detected) {
         return -1;
     }
 
-    printf("Attempting to detect AR0231AT sensor...\n");
+    // printf("Attempting to detect AR0231AT sensor...\n");
 
     *detected = false;
 
