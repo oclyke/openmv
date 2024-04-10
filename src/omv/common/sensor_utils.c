@@ -238,8 +238,8 @@ static int sensor_detect() {
                 return slv_addr;
             #endif // (OMV_FROGEYE2020_ENABLE == 1)
 
-            #if (OMV_ENABLE_AP0202AT_AR0147 == 1) || \
-                (OMV_ENABLE_AP0202AT_AR0231 == 1)
+            #if (OMV_AP0202AT_AR0147_ENABLE == 1) || \
+                (OMV_AP0202AT_AR0231_ENABLE == 1)
             case AP0202AT_SLV_ADDR: {
                 LOG_DEBUG("Matched ap0202at i2c address\n");
 
@@ -263,7 +263,7 @@ static int sensor_detect() {
 
                 // subselect the attached sensor
                 LOG_DEBUG("Now subselecting attached sensor.\n");
-                #if (OMV_ENABLE_AP0202AT_AR0147 == 1)
+                #if (OMV_AP0202AT_AR0147_ENABLE == 1)
                     sensor.slv_addr = slv_addr;
                     ret = ap0202at_detect_sensor_ar0147(&sensor, &sensor_detected);
                     sensor.slv_addr = 0;
@@ -276,9 +276,9 @@ static int sensor_detect() {
                         return slv_addr;
                     }
                     LOG_INFO("ap0202at sensor ar0147 not detected.\n");
-                #endif // (OMV_ENABLE_AP0202AT_AR0147 == 1)
+                #endif // (OMV_AP0202AT_AR0147_ENABLE == 1)
 
-                #if (OMV_ENABLE_AP0202AT_AR0231 == 1)
+                #if (OMV_AP0202AT_AR0231_ENABLE == 1)
                     sensor.slv_addr = slv_addr;
                     ret = ap0202at_detect_sensor_ar0231at(&sensor, &sensor_detected);
                     sensor.slv_addr = 0;
@@ -291,7 +291,7 @@ static int sensor_detect() {
                         return slv_addr;
                     }
                     LOG_INFO("ap0202at sensor ar0231at not detected.\n");
-                #endif // (OMV_ENABLE_AP0202AT_AR0231 == 1)
+                #endif // (OMV_AP0202AT_AR0231_ENABLE == 1)
             }
             #endif // (OMV_EMABlE_AP0202AT == 1)
 

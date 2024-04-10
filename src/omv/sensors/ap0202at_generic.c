@@ -17,7 +17,7 @@
  * on a separate I2C bus.
  */
 #include "omv_boardconfig.h"
-#if (OMV_ENABLE_AP0202AT == 1)
+#if (OMV_AP0202AT_ENABLE == 1)
 
 #include "py/mphal.h"
 
@@ -117,4 +117,4 @@ int ap0202at_detect_sensor_ar0231at(sensor_t *sensor, bool *detected) {
     return ret;
 }
 
-#endif // (OMV_ENABLE_AP0202AT == 1)
+#endif // (OMV_AP0202AT_ENABLE == 1)
