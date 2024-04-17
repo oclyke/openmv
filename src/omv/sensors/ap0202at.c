@@ -690,7 +690,7 @@ ap0202at_status_t ap0202at_host_command_load_parameter_pool(sensor_t *sensor, si
     // Write the parameters to the parameter pool.
     size_t pairs = params_len / 2;
     for (size_t i = 0; i < pairs; i++) {
-        ret = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + i, (params[2*i] << 8) | params[2*i + 1]);
+        ret = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + i*2, (params[2*i] << 8) | params[2*i + 1]);
         if (STATUS_SUCCESS != ret) {
             return ret;
         }
@@ -698,7 +698,7 @@ ap0202at_status_t ap0202at_host_command_load_parameter_pool(sensor_t *sensor, si
 
     // handle the last parameter if the length is odd.
     if ((params_len % 2) != 0) {
-        ret = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + pairs, params[params_len - 1]);
+        ret = ap0202at_write_reg_direct(sensor, AP0202AT_VAR_CMD_HANDLER_PARAMS_POOL_0 + offset + pairs*2, params[params_len - 1]);
         if (STATUS_SUCCESS != ret) {
             return ret;
         }
