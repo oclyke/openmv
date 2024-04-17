@@ -86,7 +86,7 @@ static int install_sensor_reg_write_workaround(sensor_t *sensor) {
     }
 
     // AP0202AT-REV2.ini line 378
-    delay_ms(1);
+    delay_ms(2);
 
     // Loop over the second set of register writes.
     const size_t reg_data1_len = sizeof(reg_data1) / sizeof(reg_data1[0]);
