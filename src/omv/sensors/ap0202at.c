@@ -80,7 +80,6 @@ const char* ap0202at_status_to_string(ap0202at_status_t status) {
  * @return ap0202at_status_t.
  */
 ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data) {
-    LOG_TRACE("%s\n", __func__);
     ap0202at_status_t ret = STATUS_SUCCESS;
 
     // Perform read.
@@ -106,7 +105,6 @@ ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, 
  * @return ap0202at_status_t.
  */
 ap0202at_status_t ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t data) {
-    LOG_TRACE("%s\n", __func__);
     ap0202at_status_t ret = STATUS_SUCCESS;
 
     // Perform write.
@@ -144,7 +142,6 @@ ap0202at_status_t ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr,
  * @return ap0202at_status_t.
  */
 ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr, uint16_t data, uint16_t mask) {
-    LOG_TRACE("%s\n", __func__);
     ap0202at_status_t ret = STATUS_SUCCESS;
     uint16_t reg_data;
 
@@ -286,19 +283,23 @@ ap0202at_status_t ap0202at_patch_manager_write_patch_to_ram(sensor_t* sensor, co
     // APA0202AT-REV2_AR0147-REV3.ini line 874
     status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("Failed to set access control status\n");
+        return status;
     }
     status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, address);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("Failed to set physical address access\n");
+        return status;
     }
     status = ap0202at_write_reg_burst_addr_24(sensor, (uint16_t*)data, data_words);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("Failed to write burst data\n");
+        return status;
     }
     status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
     if (STATUS_SUCCESS != status) {
-        return -1;
+        LOG_ERROR("Failed to set logical address access\n");
+        return status;
     }
 
     return status;

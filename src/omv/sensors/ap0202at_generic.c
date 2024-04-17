@@ -32,8 +32,6 @@
 #include "ar0147_regs.h"
 #include "ar0231at_regs.h"
 
-#include <stdio.h>
-
 // Maximum time in milliseconds before host command
 //   polling times out.
 #define AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS (100)
@@ -49,18 +47,24 @@ int ap0202at_detect_self(sensor_t *sensor, bool *detected) {
     // check chip version
     ret = ap0202at_read_reg_direct(sensor, AP0202AT_REG_SYSCTL_CHIP_VERSION_REG, &reg);
     if (0 != ret) {
+        LOG_ERROR("Error reading chip version: %d (%s)\n", ret, ap0202at_status_to_string(ret));
         return -1;
     }
     if (reg != AP0202AT_SYSCTL_CHIP_VERSION_REG_DEFAULT_VALUE) {
+        LOG_DEBUG("Expected to find chip version 0x%04X, but found 0x%04X\n",
+            AP0202AT_SYSCTL_CHIP_VERSION_REG_DEFAULT_VALUE, reg);
         return -1;
     }
 
     // check user defined device address ID
     ret = ap0202at_read_reg_direct(sensor, AP0202AT_REG_SYSCTL_USER_DEFINED_DEVICE_ADDRESS_ID, &reg);
     if (0 != ret) {
+        LOG_ERROR("Error reading user defined device address ID: %d (%s)\n", ret, ap0202at_status_to_string(ret));
         return -1;
     }
     if (reg != AP0202AT_SYSCTL_USER_DEFINED_DEVICE_ADDRESS_ID_DEFAULT_VALUE) {
+        LOG_DEBUG("Expected to find user defined device address ID 0x%04X, but found 0x%04X\n",
+            AP0202AT_SYSCTL_USER_DEFINED_DEVICE_ADDRESS_ID_DEFAULT_VALUE, reg);
         return -1;
     }
 
