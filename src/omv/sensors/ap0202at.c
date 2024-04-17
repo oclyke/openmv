@@ -191,11 +191,12 @@ ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr,
  * @param data_words the length of the burst data in words.
  * @return ap0202at_status_t.
  */
-ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *data, uint16_t data_words) {
+ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, const uint16_t *data, const uint16_t data_words) {
     ap0202at_status_t ret = STATUS_SUCCESS;
     const size_t group_words = 25;
     uint16_t groups = data_words / group_words;
     uint16_t remainder = data_words % group_words;
+    uint16_t endianness_correction_buffer[group_words];
 
     // Don't allow a burst of zero words.
     if ((groups == 0) && (remainder < 2)) {
@@ -205,17 +206,48 @@ ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *d
     // Send full groups of 25 words.
     for (uint16_t i = 0; i < groups; i++) {
         size_t index = i * group_words;
-        ret |= omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&data[index], 2, OMV_I2C_XFER_SUSPEND);
-        ret |= omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&data[index + 1], 2*(group_words - 1), OMV_I2C_XFER_NO_FLAGS);
+
+        // Correct the endianness of the data.
+        for (size_t j = 0; j < group_words; j++) {
+            endianness_correction_buffer[j] = (data[index + j] >> 8) | (data[index + j] << 8);
+        }
+
+        // Write the register address.
+        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[0], 2, OMV_I2C_XFER_SUSPEND);
+        if (STATUS_SUCCESS != ret) {
+            return STATUS_SOURCE_EXTERNAL | ret;
+        }
+
+        // Write the data.
+        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[1], 2*(group_words - 1), OMV_I2C_XFER_NO_FLAGS);
         if (STATUS_SUCCESS != ret) {
             return STATUS_SOURCE_EXTERNAL | ret;
         }
     }
 
-    // Send the remaining words, if any.
+    // Send the remaining data.
+    // There must be at least two words in the remainder.
+    // The first word is the register address.
+    // Any remaining words are the data.
     if (remainder != 0) {
-        ret |= omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&data[groups * group_words], 2, OMV_I2C_XFER_SUSPEND);
-        ret |= omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&data[groups * group_words + 1], 2*remainder, OMV_I2C_XFER_NO_FLAGS);
+        if (remainder < 2) {
+            LOG_ERROR("Invalid remainder length: %d\n", remainder);
+            return STATUS_ERROR_EINVAL;
+        }
+
+        // Correct the endianness of the data.
+        for (size_t i = 0; i < remainder; i++) {
+            endianness_correction_buffer[i] = (data[groups * group_words + i] >> 8) | (data[groups * group_words + i] << 8);
+        }
+
+        // Write the register address.
+        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[0], 2, OMV_I2C_XFER_SUSPEND);
+        if (STATUS_SUCCESS != ret) {
+            return STATUS_SOURCE_EXTERNAL | ret;
+        }
+
+        // Write the data.
+        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[1], 2*(remainder - 1), OMV_I2C_XFER_NO_FLAGS);
         if (STATUS_SUCCESS != ret) {
             return STATUS_SOURCE_EXTERNAL | ret;
         }

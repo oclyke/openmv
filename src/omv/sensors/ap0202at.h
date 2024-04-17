@@ -41,7 +41,7 @@ const char* ap0202at_status_to_string(ap0202at_status_t status);
 ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data);
 ap0202at_status_t ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t data);
 ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr, uint16_t data, uint16_t mask);
-ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, uint16_t *data, uint16_t data_words);
+ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, const uint16_t *data, const uint16_t data_words);
 
 // host command interface (HCI)
 ap0202at_status_t ap0202at_host_command_emplace_parameter_offset_u8(uint8_t* pool, size_t pool_len, size_t offset, uint8_t param);
