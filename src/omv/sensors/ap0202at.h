@@ -10,8 +10,8 @@
 #ifndef __AP0202AT_H__
 #define __AP0202AT_H__
 
-// #include <stdint.h>
-
+#include <stdint.h>
+#include <stddef.h>
 #include "sensor.h"
 
 // AP0202AT EXTCLK frequency.
@@ -34,6 +34,30 @@ typedef enum {
     STATUS_SOURCE_EXTERNAL = 0x80,
 } ap0202at_status_t;
 
+// Patch information data structure.
+typedef enum {
+    PATCH_FORMAT_W2_ADDR_DATA24 = 0,
+    NUM_PATCH_FORMATS,
+    PATCH_FORMAT_UNKNOWN,
+} ap0202at_patch_data_format_e;
+
+typedef struct _ap0202at_patch_t {
+    /** Patch data information. */
+    ap0202at_patch_data_format_e format;
+    const uint8_t* data;
+    size_t len;
+    uint16_t ram_address;
+    uint16_t ram_size;
+
+    /** AND9930/D Table 184. */
+    // Address of the Patch’s loader function in Patch RAM
+    uint16_t loader_address;
+    // Unique patch identifier
+    uint16_t patch_id;
+    // Firmware ROM version identifier
+    uint32_t firmware_id;
+} ap0202at_patch_t;
+
 // Get human-readable status string.
 const char* ap0202at_status_to_string(ap0202at_status_t status);
 
@@ -41,7 +65,9 @@ const char* ap0202at_status_to_string(ap0202at_status_t status);
 ap0202at_status_t ap0202at_read_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t* reg_data);
 ap0202at_status_t ap0202at_write_reg_direct(sensor_t *sensor, uint16_t reg_addr, uint16_t data);
 ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr, uint16_t data, uint16_t mask);
-ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, const uint16_t *data, const uint16_t data_words);
+
+// writing patches to ram
+ap0202at_status_t ap0202at_write_patch_to_ram(sensor_t* sensor, const ap0202at_patch_t* patch_info);
 
 // host command interface (HCI)
 ap0202at_status_t ap0202at_host_command_emplace_parameter_offset_u8(uint8_t* pool, size_t pool_len, size_t offset, uint8_t param);
@@ -58,9 +84,8 @@ ap0202at_status_t ap0202at_host_command_finish_command_asynchronous(sensor_t *se
 // patch loader interface (PLI)
 ap0202at_status_t ap0202at_patch_manager_load_patch(sensor_t *sensor, const uint16_t patch_index, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
 ap0202at_status_t ap0202at_patch_manager_get_status(sensor_t *sensor, uint16_t* result, uint16_t timeout_ms);
-ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t loader_address, uint16_t patch_id, uint32_t firmware_id, uint16_t patch_size, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
-ap0202at_status_t ap0202at_patch_manager_reserve_ram(sensor_t *sensor, uint16_t start_address, uint16_t size_bytes, uint16_t timeout_ms);
-ap0202at_status_t ap0202at_patch_manager_write_patch_to_ram(sensor_t* sensor, const uint16_t address, const uint16_t *data, uint16_t data_words);
+ap0202at_status_t ap0202at_patch_manager_reserve_ram(sensor_t *sensor, const ap0202at_patch_t* patch, uint16_t timeout_ms);
+ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, const ap0202at_patch_t* patch, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);
 
 // camera control interface (CCI)
 ap0202at_status_t ap0202at_cci_manager_get_lock(sensor_t *sensor, uint16_t timeout_start_ms, uint16_t timeout_finish_ms);

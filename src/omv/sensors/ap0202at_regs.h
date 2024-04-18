@@ -10,6 +10,8 @@
 #ifndef __AP0202AT_REGS_H__
 #define __AP0202AT_REGS_H__
 
+#define AP0202AT_ADDR_PATCH_RAM_START                            (0xC750)
+
 // VARIABLE SHORTCUTS
 #define AP0202AT_VARIABLE(page, offset)                          (0x8000 | ((page) << 10) | (offset))
 

@@ -19,12 +19,14 @@
 #include "ap0202at_regs.h"
 #include "ap0202at_ar0147_patches.h"
 
+#include <inttypes.h>
+
 // Maximum time in milliseconds before host command
 //   polling times out.
 #define AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS (100)
 #define AP0202AT_HOST_COMMAND_READ_POLL_TIMEOUT_MS (100)
 
-#define APPLY_PATCH_TIMEOUT_MS (15000)
+#define APPLY_PATCH_TIMEOUT_MS (1000)
 
 /**
  * @brief Blocking delay in milliseconds.
@@ -112,28 +114,37 @@ static int install_sensor_reg_write_workaround(sensor_t *sensor) {
  */
 static int load_apply_patch_28d4(sensor_t *sensor) {
     ap0202at_status_t status = STATUS_SUCCESS;
-    const uint16_t ram_addr = 0x5d8;
-    const uint16_t patch_size = 0x2364;
+    const ap0202at_patch_t* patch = &patch_28d4;
+
+    LOG_INFO("Loading and applying patch: \n");
+    LOG_INFO("  format: %d\n", patch->format);
+    LOG_INFO("  data: %p\n", patch->data);
+    LOG_INFO("  len: %d\n", patch->len);
+    LOG_INFO("  ram_address: 0x%04X\n", patch->ram_address);
+    LOG_INFO("  ram_size: 0x%04X\n", patch->ram_size);
+    LOG_INFO("  loader_address: 0x%04X\n", patch->loader_address);
+    LOG_INFO("  patch_id: 0x%04X\n", patch->patch_id);
+    LOG_INFO("  firmware_id: 0x%08" PRIx32 "\n", patch->firmware_id);
+
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1114
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    status = ap0202at_patch_manager_reserve_ram(sensor, patch, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
     if (STATUS_SUCCESS != status) {
         LOG_ERROR("reserve_ram failed: %d (%s)\n", status, ap0202at_status_to_string(status));
         return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1121
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4d28, patch_28d4_data, sizeof(patch_28d4_data) / sizeof(patch_28d4_data[0]));
+    status = ap0202at_write_patch_to_ram(sensor, &patch_28d4);
     if (STATUS_SUCCESS != status) {
-        LOG_ERROR("write_patch_to_ram failed: %d (%s)\n", status, ap0202at_status_to_string(status));
+        LOG_ERROR("Failed to write patch data to RAM\n");
         return status;
     }
 
     // APA0202AT-REV2_AR0147-REV3.ini line 1316
     status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x2504, 0x28d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+        sensor, patch,
+        APPLY_PATCH_TIMEOUT_MS, APPLY_PATCH_TIMEOUT_MS
     );
     if (STATUS_SUCCESS != status) {
         LOG_ERROR("apply_patch failed: %d (%s)\n", status, ap0202at_status_to_string(status));
@@ -152,30 +163,32 @@ static int load_apply_patch_28d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_01d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0x0;
-    uint16_t patch_size = 0x54;
+    (void)patch_01d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // ap0202at_patch_t* patch = &patch_01d4;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 829
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // // APA0202AT-REV2_AR0147-REV3.ini line 829
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 836
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4750, patch_01d4_data, sizeof(patch_01d4_data) / sizeof(patch_01d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 836
+    // status = ap0202at_write_patch_to_ram(sensor, &patch_01d4);
+    // if (STATUS_SUCCESS != status) {
+    //     LOG_ERROR("Failed to write patch data to RAM\n");
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 843
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x0030, 0x01d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 843
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x0030, 0x01d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    return status;
+    // return status;
 }
 
 /**
@@ -187,33 +200,35 @@ static int load_apply_patch_01d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_03d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0x54;
-    uint16_t patch_size = 0x98;
+    (void)patch_03d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // uint16_t ram_addr = 0x54;
+    // uint16_t patch_size = 0x98;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 867
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 867
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 874
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x47a4, patch_03d4_data, sizeof(patch_03d4_data) / sizeof(patch_03d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 874
+    // status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x47a4, patch_03d4_data, sizeof(patch_03d4_data) / sizeof(patch_03d4_data[0]));
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 884
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x00c8, 0x03d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 884
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x00c8, 0x03d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    return status;
+    // return status;
 }
 
 
@@ -226,30 +241,32 @@ static int load_apply_patch_03d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_11d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0xec;
-    uint16_t patch_size = 0x118;
+    (void)patch_11d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // uint16_t ram_addr = 0xec;
+    // uint16_t patch_size = 0x118;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 907
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 907
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 914
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x483c, patch_11d4_data, sizeof(patch_11d4_data) / sizeof(patch_11d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 914
+    // status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x483c, patch_11d4_data, sizeof(patch_11d4_data) / sizeof(patch_11d4_data[0]));
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 925
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x019c, 0x11d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
+    // // APA0202AT-REV2_AR0147-REV3.ini line 925
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x019c, 0x11d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
 
-    return status;
+    // return status;
 }
 
 
@@ -262,30 +279,32 @@ static int load_apply_patch_11d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_21d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0x4e0;
-    uint16_t patch_size = 0xb8;
+    (void)patch_21d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // uint16_t ram_addr = 0x4e0;
+    // uint16_t patch_size = 0xb8;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1036
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1036
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1044
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4c30, patch_21d4_data, sizeof(patch_21d4_data) / sizeof(patch_21d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1044
+    // status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4c30, patch_21d4_data, sizeof(patch_21d4_data) / sizeof(patch_21d4_data[0]));
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1054
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x056c, 0x21d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1054
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x056c, 0x21d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
 
-    return status;
+    // return status;
 }
 
 /**
@@ -297,33 +316,35 @@ static int load_apply_patch_21d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_37d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0x293c;
-    uint16_t patch_size = 0x218;
+    (void)patch_37d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // uint16_t ram_addr = 0x293c;
+    // uint16_t patch_size = 0x218;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1434
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1434
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1441
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x708c, patch_37d4_data, sizeof(patch_37d4_data) / sizeof(patch_37d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1441
+    // status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x708c, patch_37d4_data, sizeof(patch_37d4_data) / sizeof(patch_37d4_data[0]));
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line 1459
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x2b30, 0x37d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line 1459
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x2b30, 0x37d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    return status;
+    // return status;
 }
 
 /**
@@ -335,33 +356,35 @@ static int load_apply_patch_37d4(sensor_t *sensor) {
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_39d4(sensor_t *sensor) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-    uint16_t ram_addr = 0x2b04;
-    uint16_t patch_size = 0xac;
+    (void)patch_39d4;
+    return STATUS_ERROR;
+    // ap0202at_status_t status = STATUS_SUCCESS;
+    // uint16_t ram_addr = 0x2b04;
+    // uint16_t patch_size = 0xac;
 
-    // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_patch_manager_reserve_ram(sensor, ram_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line
+    // status = ap0202at_patch_manager_reserve_ram(sensor, patch->ram_addr, patch->ram_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x72a4, patch_39d4_data, sizeof(patch_39d4_data) / sizeof(patch_39d4_data[0]));
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line
+    // status = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x72a4, patch_39d4_data, sizeof(patch_39d4_data) / sizeof(patch_39d4_data[0]));
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    // APA0202AT-REV2_AR0147-REV3.ini line
-    status = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x2bd8, 0x39d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (STATUS_SUCCESS != status) {
-        return status;
-    }
+    // // APA0202AT-REV2_AR0147-REV3.ini line
+    // status = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x2bd8, 0x39d4, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (STATUS_SUCCESS != status) {
+    //     return status;
+    // }
 
-    return status;
+    // return status;
 }
 
 /**

@@ -167,142 +167,54 @@ ap0202at_status_t ap0202at_write_reg_masked(sensor_t *sensor, uint16_t reg_addr,
 }
 
 /**
- * @brief Writes a burst of data to the AP0202AT ISP.
- * @details The burst data format is very specific. It must
- *  be a sequence of 16-bit words. The words are organized
- *  into groups of 25 laid end-to-end. The last group may
- *  be shorter than 25 words. The total number of words is
- *  given in the data_len parameter.
- * 
- *  The first word of each group is the register address
- *  at which the data will be written. The remaining 24
- *  words are the data to be written. The register address
- *  will auto-increment along with the data provided.
- * 
- *  This process will be repeated until all the groups of
- *  data have been written. The last group may be shorter
- *  than 25 words.
+ * @brief Writes a patch to the AP0202AT ISP.
  * 
  * @param sensor the sensor struct.
- * @param data pointer to the burst data.
- * @param data_words the length of the burst data in words.
- * @return ap0202at_status_t.
+ * @param patch_info pointer to the patch information.
+ * @return ap0202at_status_t 
  */
-ap0202at_status_t ap0202at_write_reg_burst_addr_24(sensor_t* sensor, const uint16_t *data, const uint16_t data_words) {
+ap0202at_status_t ap0202at_write_patch_to_ram(sensor_t* sensor, const ap0202at_patch_t* patch) {
     ap0202at_status_t ret = STATUS_SUCCESS;
-    const size_t group_words = 25;
-    uint16_t groups = data_words / group_words;
-    uint16_t remainder = data_words % group_words;
-    uint16_t endianness_correction_buffer[group_words];
 
-    // Don't allow a burst of zero words.
-    if ((groups == 0) && (remainder < 2)) {
+    // Check the data format.
+    // This function only supports the W2_ADDR_DATA24 format.
+    if (patch->format != PATCH_FORMAT_W2_ADDR_DATA24) {
+        LOG_ERROR("Unsupported data format: %d\n", patch->format);
         return STATUS_ERROR_EINVAL;
     }
 
-    // Send full groups of 25 words.
-    for (uint16_t i = 0; i < groups; i++) {
-        size_t index = i * group_words;
+    uint16_t physical_address = patch->ram_address + AP0202AT_ADDR_PATCH_RAM_START;
 
-        // Correct the endianness of the data.
-        for (size_t j = 0; j < group_words; j++) {
-            endianness_correction_buffer[j] = (data[index + j] >> 8) | (data[index + j] << 8);
-        }
-
-        // Write the register address.
-        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[0], 2, OMV_I2C_XFER_SUSPEND);
-        if (STATUS_SUCCESS != ret) {
-            return STATUS_SOURCE_EXTERNAL | ret;
-        }
-
-        // Write the data.
-        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[1], 2*(group_words - 1), OMV_I2C_XFER_NO_FLAGS);
-        if (STATUS_SUCCESS != ret) {
-            return STATUS_SOURCE_EXTERNAL | ret;
-        }
+    // Set the access control state.
+    // PHYSICAL_UPPER_ADDRESS: 0x00 (Bits 17:16 of the physical address, assumed to be 0)
+    // PHY_REGIO: 0x00 (Physical access to patch RAM)
+    // EN_UPPER_32K_PHY_ACCESS: ((address >> 15) & 0x01) (This is bit 15 of the physical address)
+    ret = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, (physical_address >> 15) & 0x01);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("Failed to set access control state register\n");
+        return ret;
     }
-
-    // Send the remaining data.
-    // There must be at least two words in the remainder.
-    // The first word is the register address.
-    // Any remaining words are the data.
-    if (remainder != 0) {
-        if (remainder < 2) {
-            LOG_ERROR("Invalid remainder length: %d\n", remainder);
-            return STATUS_ERROR_EINVAL;
-        }
-
-        // Correct the endianness of the data.
-        for (size_t i = 0; i < remainder; i++) {
-            endianness_correction_buffer[i] = (data[groups * group_words + i] >> 8) | (data[groups * group_words + i] << 8);
-        }
-
-        // Write the register address.
-        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[0], 2, OMV_I2C_XFER_SUSPEND);
-        if (STATUS_SUCCESS != ret) {
-            return STATUS_SOURCE_EXTERNAL | ret;
-        }
-
-        // Write the data.
-        ret = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)&endianness_correction_buffer[1], 2*(remainder - 1), OMV_I2C_XFER_NO_FLAGS);
-        if (STATUS_SUCCESS != ret) {
-            return STATUS_SOURCE_EXTERNAL | ret;
-        }
+    // Set the lower 15 bits of the physical address.
+    // Note: Writing to this register will automatically set the PHYSICAL_ACCESS_STATE to 0x03 (physical access).
+    ret = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, physical_address & 0x7FFF);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("Failed to set physical address access\n");
+        return ret;
+    }
+    // Write the entire contents of the patch to the patch RAM.
+    int omv_return_code = omv_i2c_write_bytes(&sensor->i2c_bus, sensor->slv_addr, (uint8_t*)patch->data, patch->len, OMV_I2C_XFER_NO_FLAGS);
+    if (omv_return_code != 0) {
+        LOG_ERROR("Failed to write patch data with code %d\n", omv_return_code);
+        return STATUS_SOURCE_EXTERNAL | omv_return_code;
+    }
+    // Reset the access control state.
+    ret = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("Failed to set logical address access\n");
+        return ret;
     }
 
     return ret;
-}
-
-
-/**
- * @brief Writes a burst of data to the AP0202AT ISP.
- * @details The burst data format is very specific. It must
- *  be a sequence of 16-bit words. The words are organized
- *  into groups of 25 laid end-to-end. The last group may
- *  be shorter than 25 words. The total number of words is
- *  given in the data_len parameter.
- * 
- *  The first word of each group is the register address
- *  at which the data will be written. The remaining 24
- *  words are the data to be written. The register address
- *  will auto-increment along with the data provided.
- * 
- *  This process will be repeated until all the groups of
- *  data have been written. The last group may be shorter
- *  than 25 words.
- * 
- * @param sensor the sensor struct.
- * @param data pointer to the burst data.
- * @param data_words the length of the burst data in words.
- * @return ap0202at_status_t.
- * 
- */
-ap0202at_status_t ap0202at_patch_manager_write_patch_to_ram(sensor_t* sensor, const uint16_t address, const uint16_t *data, uint16_t data_words) {
-    ap0202at_status_t status = STATUS_SUCCESS;
-
-    // APA0202AT-REV2_AR0147-REV3.ini line 874
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_ACCESS_CTL_STAT, 0x0001);
-    if (STATUS_SUCCESS != status) {
-        LOG_ERROR("Failed to set access control status\n");
-        return status;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_PHYSICAL_ADDRESS_ACCESS, address);
-    if (STATUS_SUCCESS != status) {
-        LOG_ERROR("Failed to set physical address access\n");
-        return status;
-    }
-    status = ap0202at_write_reg_burst_addr_24(sensor, (uint16_t*)data, data_words);
-    if (STATUS_SUCCESS != status) {
-        LOG_ERROR("Failed to write burst data\n");
-        return status;
-    }
-    status = ap0202at_write_reg_direct(sensor, AP0202AT_REG_LOGICAL_ADDRESS_ACCESS, 0x0000);
-    if (STATUS_SUCCESS != status) {
-        LOG_ERROR("Failed to set logical address access\n");
-        return status;
-    }
-
-    return status;
 }
 
 ap0202at_status_t ap0202at_write_sensor_u16(sensor_t *sensor, uint16_t port_address, uint16_t data, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
@@ -663,7 +575,7 @@ ap0202at_status_t ap0202at_host_command_poll_doorbell_bit_clear(sensor_t *sensor
         static size_t count = 0;
         count++;
         if (count % 500 == 0) {
-            // LOG_INFO("Doorbell Bit is set. Waiting... %d\n", delta);
+            LOG_INFO("Doorbell Bit is set. Waiting... %d\n", delta);
         }
     }
 
@@ -994,6 +906,69 @@ ap0202at_status_t ap0202at_patch_manager_get_status(sensor_t *sensor, uint16_t* 
 }
 
 /**
+ * @brief Requests the patch loader to reserve a region of
+ * Patch RAM to contain a patch.
+ * 
+ * @param sensor 
+ * @param start_address 
+ * @param size_bytes 
+ * @param timeout_ms 
+ * @return ap0202at_status_t 
+ */
+ap0202at_status_t ap0202at_patch_manager_reserve_ram(sensor_t *sensor, const ap0202at_patch_t* patch, uint16_t timeout_ms) {
+    ap0202at_status_t ret = STATUS_SUCCESS;
+    uint16_t host_command_result;
+    bool doorbell;
+
+    uint16_t start_address = patch->ram_address;
+    uint16_t size_bytes = patch->ram_size;
+
+    // ensure that the doorbell bit is clear.
+    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("ap0202at_patch_manager_reserve_ram: get doorbell bit failed\n");
+        return ret;
+    }
+    if (doorbell) {
+        LOG_WARNING("ap0202at_patch_manager_reserve_ram: doorbell bit is set\n");
+        return STATUS_ERROR_DOORBELL;
+    }
+
+    // prepare the parameter pool.
+    uint8_t pool[4];
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, start_address);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("ap0202at_patch_manager_reserve_ram: emplace start address parameter failed\n");
+        return ret;
+    }
+    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, size_bytes);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("ap0202at_patch_manager_reserve_ram: emplace size parameter failed\n");
+        return ret;
+    }
+
+    // load the parameter pool.
+    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("ap0202at_patch_manager_reserve_ram: load parameter pool failed\n");
+        return ret;
+    }
+
+    // execute the command synchronously.
+    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, timeout_ms);
+    if (STATUS_SUCCESS != ret) {
+        LOG_ERROR("ap0202at_patch_manager_reserve_ram: execute command failed\n");
+        return ret;
+    }
+    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
+        LOG_WARNING("ap0202at_patch_manager_reserve_ram: command returned: %d\n", host_command_result);
+        return STATUS_SOURCE_EXTERNAL | host_command_result;
+    }
+
+    return ret;
+}
+
+/**
  * @brief Requests that the Patch Loader applies a patch stored in RAM.
  * 
  * @param sensor pointer to the sensor struct.
@@ -1004,10 +979,15 @@ ap0202at_status_t ap0202at_patch_manager_get_status(sensor_t *sensor, uint16_t* 
  * @param ram_addr the address in RAM where the patch is stored.
  * @return ap0202at_status_t 
  */
-ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t loader_address, uint16_t patch_id, uint32_t firmware_id, uint16_t patch_size, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
+ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, const ap0202at_patch_t* patch, uint16_t timeout_start_ms, uint16_t timeout_finish_ms) {
     ap0202at_status_t ret = STATUS_SUCCESS;
     uint16_t host_command_result;
     bool doorbell;
+
+    uint16_t loader_address = patch->ram_address;
+    uint16_t patch_id = patch->patch_id;
+    uint32_t firmware_id = patch->firmware_id;
+    uint16_t patch_size = patch->len;
 
     // ensure that the doorbell bit is clear.
     ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
@@ -1071,66 +1051,6 @@ ap0202at_status_t ap0202at_patch_manager_apply_patch(sensor_t *sensor, uint16_t 
     if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
         LOG_WARNING("ap0202at_patch_manager_apply_patch: finish command returned: %d\n", host_command_result);
         return ret;
-    }
-
-    return ret;
-}
-
-/**
- * @brief Requests the patch loader to reserve a region of
- * Patch RAM to contain a patch.
- * 
- * @param sensor 
- * @param start_address 
- * @param size_bytes 
- * @param timeout_ms 
- * @return ap0202at_status_t 
- */
-ap0202at_status_t ap0202at_patch_manager_reserve_ram(sensor_t *sensor, uint16_t start_address, uint16_t size_bytes, uint16_t timeout_ms) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t host_command_result;
-    bool doorbell;
-
-    // ensure that the doorbell bit is clear.
-    ret = ap0202at_host_command_get_doorbell_bit(sensor, NULL, &doorbell);
-    if (STATUS_SUCCESS != ret) {
-        LOG_ERROR("ap0202at_patch_manager_reserve_ram: get doorbell bit failed\n");
-        return ret;
-    }
-    if (doorbell) {
-        LOG_WARNING("ap0202at_patch_manager_reserve_ram: doorbell bit is set\n");
-        return STATUS_ERROR_DOORBELL;
-    }
-
-    // prepare the parameter pool.
-    uint8_t pool[4];
-    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 0, start_address);
-    if (STATUS_SUCCESS != ret) {
-        LOG_ERROR("ap0202at_patch_manager_reserve_ram: emplace start address parameter failed\n");
-        return ret;
-    }
-    ret = ap0202at_host_command_emplace_parameter_offset_u16(pool, sizeof(pool)/sizeof(pool[0]), 2, size_bytes);
-    if (STATUS_SUCCESS != ret) {
-        LOG_ERROR("ap0202at_patch_manager_reserve_ram: emplace size parameter failed\n");
-        return ret;
-    }
-
-    // load the parameter pool.
-    ret = ap0202at_host_command_load_parameter_pool(sensor, 0, pool, sizeof(pool)/sizeof(pool[0]));
-    if (STATUS_SUCCESS != ret) {
-        LOG_ERROR("ap0202at_patch_manager_reserve_ram: load parameter pool failed\n");
-        return ret;
-    }
-
-    // execute the command synchronously.
-    ret = ap0202at_host_command_execute_command_synchronous(sensor, AP0202AT_HC_CMD_PATCHLDR_RESERVE_RAM, &host_command_result, timeout_ms);
-    if (STATUS_SUCCESS != ret) {
-        LOG_ERROR("ap0202at_patch_manager_reserve_ram: execute command failed\n");
-        return ret;
-    }
-    if (AP0202AT_HC_RESP_ENOERR != host_command_result) {
-        LOG_WARNING("ap0202at_patch_manager_reserve_ram: command returned: %d\n", host_command_result);
-        return STATUS_SOURCE_EXTERNAL | host_command_result;
     }
 
     return ret;

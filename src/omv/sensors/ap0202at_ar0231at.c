@@ -33,330 +33,354 @@
  * @return int 0 on success, -1 on error.
  */
 static int load_apply_patch_0056(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x0;
-    uint16_t patch_size = 0x614;
+    (void)patch_0056;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x0;
+    // uint16_t patch_size = 0x614;
 
-    // AP0202AT-REV2_AR0231AT-REV7.ini line 1141
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // // AP0202AT-REV2_AR0231AT-REV7.ini line 1141
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
     
-    // AP0202AT-REV2_AR0231AT-REV7.ini line 1149
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4750, patch_0056_data, sizeof(patch_0056_data) / sizeof(patch_0056_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // // AP0202AT-REV2_AR0231AT-REV7.ini line 1149
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4750, patch_0056_data, sizeof(patch_0056_data) / sizeof(patch_0056_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    // AP0202AT-REV2_AR0231AT-REV7.ini line 1188
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x049c, 0x0056, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // // AP0202AT-REV2_AR0231AT-REV7.ini line 1188
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x049c, 0x0056, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_0156(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x614;
-    uint16_t patch_size = 0x54;
+    (void)patch_0156;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x614;
+    // uint16_t patch_size = 0x54;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4d64, patch_0156_data, sizeof(patch_0156_data) / sizeof(patch_0156_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4d64, patch_0156_data, sizeof(patch_0156_data) / sizeof(patch_0156_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
     
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x049c, 0x0156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x049c, 0x0156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_0256(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x668;
-    uint16_t patch_size = 0x620;
+    (void)patch_0256;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x668;
+    // uint16_t patch_size = 0x620;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4db8, patch_0256_data, sizeof(patch_0256_data) / sizeof(patch_0256_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x4db8, patch_0256_data, sizeof(patch_0256_data) / sizeof(patch_0256_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x0c20, 0x0256, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x0c20, 0x0256, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_0356(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0xc88;
-    uint16_t patch_size = 0x98;
+    (void)patch_0356;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0xc88;
+    // uint16_t patch_size = 0x98;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x53d8, patch_0356_data, sizeof(patch_0356_data) / sizeof(patch_0356_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x53d8, patch_0356_data, sizeof(patch_0356_data) / sizeof(patch_0356_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x0cfc, 0x0356, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x0cfc, 0x0356, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_0456(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0xd20;
-    uint16_t patch_size = 0x12d0;
+    (void)patch_0456;
+    return STATUS_ERROR;
+//     ap0202at_status_t ret = STATUS_SUCCESS;
+//     uint16_t patch_addr = 0xd20;
+//     uint16_t patch_size = 0x12d0;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+//     ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+//     if (ret != STATUS_SUCCESS) {
+//         return ret;
+//     }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x5470, patch_0456_data, sizeof(patch_0456_data) / sizeof(patch_0456_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+//     ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x5470, patch_0456_data, sizeof(patch_0456_data) / sizeof(patch_0456_data[0]));
+//     if (ret != STATUS_SUCCESS) {
+//         return -1;
+//     }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x1d40, 0x0456, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+//     ret = ap0202at_patch_manager_apply_patch(
+//         sensor,
+//         0x1d40, 0x0456, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+//         AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+//     );
+//     if (ret != STATUS_SUCCESS) {
+//         return ret;
+//     }
 
-    return ret;
+//     return ret;
 }
 
 static int load_apply_patch_1156(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x1ff0;
-    uint16_t patch_size = 0x118;
+    (void)patch_1156;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x1ff0;
+    // uint16_t patch_size = 0x118;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6740, patch_1156_data, sizeof(patch_1156_data) / sizeof(patch_1156_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6740, patch_1156_data, sizeof(patch_1156_data) / sizeof(patch_1156_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x20a0, 0x1156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x20a0, 0x1156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_1356(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x2108;
-    uint16_t patch_size = 0x414;
+    (void)patch_1356;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x2108;
+    // uint16_t patch_size = 0x414;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }     
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }     
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6858, patch_1356_data, sizeof(patch_1356_data) / sizeof(patch_1356_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6858, patch_1356_data, sizeof(patch_1356_data) / sizeof(patch_1356_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x2108, 0x1356, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x2108, 0x1356, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_1456(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x25c1;
-    uint16_t patch_size = 0xdc;
+    (void)patch_1456;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x25c1;
+    // uint16_t patch_size = 0xdc;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6c6c, patch_1456_data, sizeof(patch_1456_data) / sizeof(patch_1456_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6c6c, patch_1456_data, sizeof(patch_1456_data) / sizeof(patch_1456_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x25cc, 0x1456, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x25cc, 0x1456, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_1556(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x25f8;
-    uint16_t patch_size = 0x1f8;
+    (void)patch_1556;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x25f8;
+    // uint16_t patch_size = 0x1f8;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6d48, patch_1556_data, sizeof(patch_1556_data) / sizeof(patch_1556_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6d48, patch_1556_data, sizeof(patch_1556_data) / sizeof(patch_1556_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x2750, 0x1556, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x2750, 0x1556, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_1756(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x27f0;
-    uint16_t patch_size = 0x60;
+    (void)patch_1756;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x27f0;
+    // uint16_t patch_size = 0x60;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6f40, patch_1756_data, sizeof(patch_1756_data) / sizeof(patch_1756_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6f40, patch_1756_data, sizeof(patch_1756_data) / sizeof(patch_1756_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x283c, 0x1756, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x283c, 0x1756, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_1956(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x2850;
-    uint16_t patch_size = 0xa0;
+    (void)patch_1956;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x2850;
+    // uint16_t patch_size = 0xa0;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6fa0, patch_1956_data, sizeof(patch_1956_data) / sizeof(patch_1956_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x6fa0, patch_1956_data, sizeof(patch_1956_data) / sizeof(patch_1956_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x28cc, 0x1956, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x28cc, 0x1956, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 static int load_apply_patch_2156(sensor_t *sensor) {
-    ap0202at_status_t ret = STATUS_SUCCESS;
-    uint16_t patch_addr = 0x28f0;
-    uint16_t patch_size = 0xb8;
+    (void)patch_2156;
+    return STATUS_ERROR;
+    // ap0202at_status_t ret = STATUS_SUCCESS;
+    // uint16_t patch_addr = 0x28f0;
+    // uint16_t patch_size = 0xb8;
 
-    ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_reserve_ram(sensor, patch_addr, patch_size, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS);
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x7040, patch_2156_data, sizeof(patch_2156_data) / sizeof(patch_2156_data[0]));
-    if (ret != STATUS_SUCCESS) {
-        return -1;
-    }
+    // ret = ap0202at_patch_manager_write_patch_to_ram(sensor, 0x7040, patch_2156_data, sizeof(patch_2156_data) / sizeof(patch_2156_data[0]));
+    // if (ret != STATUS_SUCCESS) {
+    //     return -1;
+    // }
 
-    ret = ap0202at_patch_manager_apply_patch(
-        sensor,
-        0x297c, 0x2156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
-        AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
-    );
-    if (ret != STATUS_SUCCESS) {
-        return ret;
-    }
+    // ret = ap0202at_patch_manager_apply_patch(
+    //     sensor,
+    //     0x297c, 0x2156, PATCHLDR_MAGIC_FIRMWARE_ID, patch_size,
+    //     AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS, AP0202AT_HOST_COMMAND_ISSUE_POLL_TIMEOUT_MS
+    // );
+    // if (ret != STATUS_SUCCESS) {
+    //     return ret;
+    // }
 
-    return ret;
+    // return ret;
 }
 
 /**
